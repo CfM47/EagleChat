@@ -6,8 +6,6 @@ set -e
 # Navigate to the script's directory to ensure paths are correct
 cd "$(dirname "$0")"
 
-echo $COMPOSE_BAKE
-
 echo "Building eaglechat-id-manager image..."
 docker build \
   --tag eaglechat-id-manager \
