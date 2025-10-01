@@ -15,7 +15,7 @@ CONTAINERS=$(docker ps -a --filter "network=${SIMULATED_NETWORK_NAME}" -q)
 
 if [ -n "$CONTAINERS" ]; then
   echo "Stopping and removing containers on network '${SIMULATED_NETWORK_NAME}'..."
-  docker rm --force $CONTAINERS
+  docker rm --force "$CONTAINERS"
 else
   echo "No containers found on network '${SIMULATED_NETWORK_NAME}'."
 fi
