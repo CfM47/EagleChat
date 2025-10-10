@@ -6,7 +6,7 @@ import (
 )
 
 // IPExpirationDuration is the duration after which an IP address is considered expired
-const IPExpirationDuration = 24 * time.Hour
+const IPExpirationDuration = 5 * time.Minute
 
 // User represents a client inside EagleChat system
 type User struct {
