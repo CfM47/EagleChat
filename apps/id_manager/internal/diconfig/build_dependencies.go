@@ -11,8 +11,10 @@ import (
 )
 
 type Container struct {
-	QueryHandler       handlers.Handler
-	GetRandomUsersHandler handlers.Handler
+	QueryUserHandler            handlers.Handler
+	GetRandomUsersHandler       handlers.Handler
+	QueryPendingMessagesHandler handlers.Handler
+	AddPendingMessagesHandler   handlers.Handler
 }
 
 func NewContainer() (*Container, error) {
@@ -28,20 +30,28 @@ func NewContainer() (*Container, error) {
 
 	// Persistence route files
 	userFile := filepath.Join(dataDir, "users.json")
+	pendingMessagesFile := filepath.Join(dataDir, "pending_messages.json")
 
 	// Initialize repositories
 	userRepo := persistence.NewJSONUserRepository(userFile)
+	pendingMessagesRepo := persistence.NewJSONPendingMessageRepository(pendingMessagesFile)
 
 	// Initialize use cases
-	queryUC := usecases.NewQueryUserDataUseCase(userRepo)
+	queryUserDataUC := usecases.NewQueryUserDataUseCase(userRepo)
 	getRandomUsersUC := usecases.NewGetRandomUsersUseCase(userRepo)
+	queryPendingMessagesUC := usecases.NewQueryPendingMessagesUseCase(pendingMessagesRepo)
+	addPendingMessagesUC := usecases.NewAddPendingMessagesUseCase(pendingMessagesRepo)
 
 	// Initialize handlers
-	queryHandler := handlers.NewQueryUserDataHandler(queryUC)
 	getRandomUsersHandler := handlers.NewGetRandomUsersHandler(getRandomUsersUC)
+	queryUserHandler := handlers.NewQueryUserDataHandler(queryUserDataUC)
+	queryPendingMessagesHandler := handlers.NewQueryPendingMessagesHandler(queryPendingMessagesUC)
+	addPendingMessagesHandler := handlers.NewAddPendingMessagesHandler(addPendingMessagesUC)
 
 	return &Container{
-		QueryHandler:       queryHandler,
-		GetRandomUsersHandler: getRandomUsersHandler,
+		QueryUserHandler:            queryUserHandler,
+		GetRandomUsersHandler:       getRandomUsersHandler,
+		QueryPendingMessagesHandler: queryPendingMessagesHandler,
+		AddPendingMessagesHandler:   addPendingMessagesHandler,
 	}, nil
 }
