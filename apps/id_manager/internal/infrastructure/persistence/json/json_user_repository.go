@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"sync"
+	"time"
 )
 
 type JSONUserRepository struct {
@@ -72,6 +73,10 @@ func (r *JSONUserRepository) FindByID(ID string) (*entities.User, error) {
 	}
 	for _, u := range users {
 		if u.ID == ID {
+			// Check if IP is expired and nullify it if so
+			if u.IsIPExpired() {
+				u.IP = nil
+			}
 			return u, nil
 		}
 	}
@@ -82,7 +87,19 @@ func (r *JSONUserRepository) FindAll() ([]*entities.User, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	return r.load()
+	users, err := r.load()
+	if err != nil {
+		return nil, err
+	}
+
+	// Check for expired IPs and nullify them
+	for _, u := range users {
+		if u.IsIPExpired() {
+			u.IP = nil
+		}
+	}
+
+	return users, nil
 }
 
 func (r *JSONUserRepository) Delete(ID string) error {
@@ -115,6 +132,8 @@ func (r *JSONUserRepository) UpdateIP(ID string, ip net.IP) error {
 	for i := range users {
 		if users[i].ID == ID {
 			users[i].IP = &ip
+			// Update LastSeen when IP is updated, rounded to zero like in NewUser
+			users[i].LastSeen = time.Now().Round(0)
 			return r.save(users)
 		}
 	}
