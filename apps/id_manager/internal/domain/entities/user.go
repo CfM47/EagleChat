@@ -27,7 +27,7 @@ func NewUser(id, username, publicKeyPEM string) *User {
 		ID:           id,
 		Username:     username,
 		PublicKeyPEM: publicKeyPEM,
-		LastSeen:     time.Now().Round(0),
+		LastSeen:     time.Now().UTC().Round(0),
 	}
 }
 

@@ -133,11 +133,10 @@ func (r *JSONUserRepository) UpdateIP(ID string, ip net.IP) error {
 		if users[i].ID == ID {
 			users[i].IP = &ip
 			// Update LastSeen when IP is updated, rounded to zero like in NewUser
-			users[i].LastSeen = time.Now().Round(0)
+			users[i].LastSeen = time.Now().UTC().Round(0)
 			return r.save(users)
 		}
 	}
 
 	return repository.ErrUserNotFound
 }
-
