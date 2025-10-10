@@ -28,13 +28,15 @@ func main() {
 	userFile := filepath.Join(dataDir, "users.json")
 
 	// Initialize repositories
-	repo := persistence.NewJSONUserRepository(userFile)
+	userRepo := persistence.NewJSONUserRepository(userFile)
 
 	// Initialize use cases
-	queryUC := usecases.NewQueryUserDataUseCase(repo)
+	queryUC := usecases.NewQueryUserDataUseCase(userRepo)
+	getRandomUsersUC := usecases.NewGetRandomUsersUseCase(userRepo)
 
 	// Initialize handlers
 	queryHandler := handlers.NewQueryUserDataHandler(queryUC)
+	getRandomUsersHandler := handlers.NewGetRandomUsersHandler(getRandomUsersUC)
 
 	// Initialize gin server
 	r := gin.Default()
@@ -48,6 +50,9 @@ func main() {
 	// Initialize endpoints
 	r.GET("/users", func(c *gin.Context) {
 		queryHandler.Handle(c)
+	})
+	r.GET("/users/random", func(c *gin.Context) {
+		getRandomUsersHandler.Handle(c)
 	})
 
 	// Run server
