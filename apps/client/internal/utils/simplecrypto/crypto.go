@@ -4,8 +4,8 @@ import (
 	"crypto/sha256"
 	"errors"
 
-	"eaglechat/apps/client/internal/infrastructure/simplecrypto/aes"
-	"eaglechat/apps/client/internal/infrastructure/simplecrypto/rsa"
+	"eaglechat/apps/client/internal/utils/simplecrypto/aes"
+	"eaglechat/apps/client/internal/utils/simplecrypto/rsa"
 )
 
 var (

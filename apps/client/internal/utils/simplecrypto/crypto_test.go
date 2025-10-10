@@ -3,8 +3,8 @@ package simplecrypto_test
 import (
 	"testing"
 
-	"eaglechat/apps/client/internal/infrastructure/simplecrypto"
-	"eaglechat/apps/client/internal/infrastructure/simplecrypto/rsa"
+	"eaglechat/apps/client/internal/utils/simplecrypto"
+	"eaglechat/apps/client/internal/utils/simplecrypto/rsa"
 	"github.com/stretchr/testify/assert"
 )
 
