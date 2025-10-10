@@ -5,6 +5,9 @@ import (
 	"time"
 )
 
+// IPExpirationDuration is the duration after which an IP address is considered expired
+const IPExpirationDuration = 5 * time.Minute
+
 // User represents a client inside EagleChat system
 type User struct {
 	ID           string    `json:"id"`         // user unique id
@@ -24,6 +27,14 @@ func NewUser(id, username, publicKeyPEM string) *User {
 		ID:           id,
 		Username:     username,
 		PublicKeyPEM: publicKeyPEM,
-		LastSeen:     time.Now().Round(0),
+		LastSeen:     time.Now().UTC().Round(0),
 	}
+}
+
+// IsIPExpired checks if the IP address is expired based on LastSeen time
+func (u *User) IsIPExpired() bool {
+	if u.IP == nil {
+		return false
+	}
+	return time.Since(u.LastSeen) > IPExpirationDuration
 }

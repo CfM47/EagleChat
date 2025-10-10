@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -206,5 +207,113 @@ func RunUserRepositoryTests(t *testing.T, repoFactory func(t *testing.T) (UserRe
 		assert.Equal(t, user1BeforeUpdate, user1AfterUpdate)
 		assert.Equal(t, user3BeforeUpdate, user3AfterUpdate)
 		assert.True(t, newIP.Equal(*user2AfterUpdate.IP))
+	})
+
+	t.Run("updates LastSeen when IP is updated", func(t *testing.T) {
+		// Arrange
+		repo, cleanup := repoFactory(t)
+		defer cleanup()
+		user := mockUser()
+		require.NoError(t, repo.Save(user))
+
+		// Get initial LastSeen
+		initialUser, err := repo.FindByID(user.ID)
+		require.NoError(t, err)
+		initialLastSeen := initialUser.LastSeen
+
+		// Act
+		newIP := net.ParseIP("192.0.2.1")
+		err = repo.UpdateIP(user.ID, newIP)
+		require.NoError(t, err)
+
+		// Assert
+		updatedUser, err := repo.FindByID(user.ID)
+		require.NoError(t, err)
+		assert.True(t, updatedUser.LastSeen.After(initialLastSeen) || updatedUser.LastSeen.Equal(initialLastSeen))
+		assert.True(t, newIP.Equal(*updatedUser.IP))
+	})
+
+	t.Run("returns nil IP when IP is expired", func(t *testing.T) {
+		// Arrange
+		repo, cleanup := repoFactory(t)
+		defer cleanup()
+		user := mockUser()
+		require.NoError(t, repo.Save(user))
+
+		// Set an IP with an expired LastSeen
+		ip := net.ParseIP("192.0.2.1")
+		user.IP = &ip
+		user.LastSeen = entities.NewUser("", "", "").LastSeen.Add(-entities.IPExpirationDuration - 1*time.Hour)
+		require.NoError(t, repo.Save(user))
+
+		// Act
+		foundUser, err := repo.FindByID(user.ID)
+
+		// Assert
+		require.NoError(t, err)
+		assert.Nil(t, foundUser.IP, "IP should be nil when expired")
+	})
+
+	t.Run("keeps IP when not expired", func(t *testing.T) {
+		// Arrange
+		repo, cleanup := repoFactory(t)
+		defer cleanup()
+		user := mockUser()
+		require.NoError(t, repo.Save(user))
+
+		// Set an IP with a recent LastSeen
+		ip := net.ParseIP("192.0.2.1")
+		err := repo.UpdateIP(user.ID, ip)
+		require.NoError(t, err)
+
+		// Act
+		foundUser, err := repo.FindByID(user.ID)
+
+		// Assert
+		require.NoError(t, err)
+		assert.NotNil(t, foundUser.IP, "IP should not be nil when not expired")
+		assert.True(t, ip.Equal(*foundUser.IP))
+	})
+
+	t.Run("returns nil IP for expired IPs in FindAll", func(t *testing.T) {
+		// Arrange
+		repo, cleanup := repoFactory(t)
+		defer cleanup()
+		
+		// Create user with expired IP
+		user1 := mockUser()
+		ip1 := net.ParseIP("192.0.2.1")
+		user1.IP = &ip1
+		user1.LastSeen = entities.NewUser("", "", "").LastSeen.Add(-entities.IPExpirationDuration - 1*time.Hour)
+		require.NoError(t, repo.Save(user1))
+
+		// Create user with valid IP
+		user2 := mockUser()
+		require.NoError(t, repo.Save(user2))
+		ip2 := net.ParseIP("192.0.2.2")
+		require.NoError(t, repo.UpdateIP(user2.ID, ip2))
+
+		// Act
+		users, err := repo.FindAll()
+
+		// Assert
+		require.NoError(t, err)
+		assert.Len(t, users, 2)
+
+		// Find each user and check their IPs
+		var foundUser1, foundUser2 *entities.User
+		for _, u := range users {
+			if u.ID == user1.ID {
+				foundUser1 = u
+			} else if u.ID == user2.ID {
+				foundUser2 = u
+			}
+		}
+
+		require.NotNil(t, foundUser1)
+		require.NotNil(t, foundUser2)
+		assert.Nil(t, foundUser1.IP, "User1 IP should be nil (expired)")
+		assert.NotNil(t, foundUser2.IP, "User2 IP should not be nil (not expired)")
+		assert.True(t, ip2.Equal(*foundUser2.IP))
 	})
 }

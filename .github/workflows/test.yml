@@ -1,0 +1,46 @@
+name: Run Tests
+
+on:
+  pull_request:
+    branches:
+      - main
+      - dev
+  push:
+    branches:
+      - main
+      - dev
+
+jobs:
+  test-id-manager:
+    name: Test ID Manager
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'apps/id_manager/go.mod'
+      
+      - name: Run tests
+        working-directory: apps/id_manager
+        run: go test ./...
+
+  test-client:
+    name: Test Client
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'apps/client/go.mod'
+      
+      - name: Run tests
+        working-directory: apps/client
+        run: go test ./...
