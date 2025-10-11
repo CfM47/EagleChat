@@ -22,6 +22,12 @@ type PrivateKey struct {
 	Key *rsa.PrivateKey
 }
 
+func (priv *PrivateKey) PublicKey() *PublicKey {
+	return &PublicKey{
+		Key: &priv.Key.PublicKey,
+	}
+}
+
 // GenerateKeyPair creates a new RSA key pair.
 func GenerateKeyPair() (*PrivateKey, *PublicKey, error) {
 	priv, err := rsa.GenerateKey(rand.Reader, KeySize)
