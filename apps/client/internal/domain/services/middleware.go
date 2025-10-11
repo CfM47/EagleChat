@@ -1,4 +1,4 @@
-package domain
+package services
 
 import (
 	"eaglechat/apps/client/internal/domain/entities"
@@ -13,4 +13,8 @@ type Middleware interface {
 
 type Connector interface {
 	Connect(listenPort uint16, userID entities.User, sk rsa.PrivateKey) (Middleware, <-chan entities.Message, error)
+}
+
+type Registerer interface {
+	Register(username string, sk rsa.PrivateKey) (entities.User, error)
 }

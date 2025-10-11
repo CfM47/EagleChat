@@ -1,17 +1,17 @@
 package middleware
 
 import (
-	"eaglechat/apps/client/internal/domain"
 	"eaglechat/apps/client/internal/domain/entities"
+	"eaglechat/apps/client/internal/domain/services"
 	middleware_entities "eaglechat/apps/client/internal/middleware/domain/entities"
 	message_cache "eaglechat/apps/client/internal/middleware/domain/repositories/messagecache"
 	user_cache "eaglechat/apps/client/internal/middleware/domain/repositories/usercache"
-	"eaglechat/apps/client/internal/middleware/domain/services"
+	middleware_services "eaglechat/apps/client/internal/middleware/domain/services"
 	"eaglechat/apps/client/internal/utils/simplecrypto/rsa"
 	"time"
 )
 
-var _ domain.Middleware = (*Middleware)(nil)
+var _ services.Middleware = (*Middleware)(nil)
 
 type Middleware struct {
 	ownPort uint16
@@ -20,9 +20,9 @@ type Middleware struct {
 	p2pConnections map[entities.UserID]middleware_entities.P2PConnection
 	messageCache   message_cache.MessageCache
 
-	p2pConnPool services.P2PConnPool
+	p2pConnPool middleware_services.P2PConnPool
 
-	iDManagerPool services.IDManagerPool
+	iDManagerPool middleware_services.IDManagerPool
 	knownUsers    user_cache.UserCacheRepository
 
 	receivedMessages chan<- entities.Message
@@ -30,23 +30,10 @@ type Middleware struct {
 	sk rsa.PrivateKey
 
 	messageSenderTicker *time.Ticker
-		quit                chan struct{}
-	}
-	
-	func (m *Middleware) Shutdown() {
-		m.messageSenderTicker.Stop()
-		close(m.quit)
-	}
+	quit                chan struct{}
+}
 
-type Connector struct {
-	messageCache message_cache.MessageCache
-
-	p2pPoolBuilder     services.P2PConnPoolBuilder
-	p2pDialer          middleware_entities.P2PDialer
-	p2pListenerStarter middleware_entities.P2PListenStarter
-
-	idManagerConnectionBuilder middleware_entities.IDManagerConnBuilder
-	iDManagerPoolBuilder       services.IDManagerPoolBuilder
-
-	knownUsers user_cache.UserCacheRepository
+func (m *Middleware) Shutdown() {
+	m.messageSenderTicker.Stop()
+	close(m.quit)
 }
