@@ -20,3 +20,31 @@ user is disconnected
 - the user stores the message
 - tells the id manager it has a message pending, and asks for n other users' ip,
 then sends the message to those users for storage
+
+## Message Caching
+
+If user a connects with id manager A and tells it there's a message from a to
+some other user b then loses connection with that id manager and connects to
+another one B that does not yet have this information, a cannot assume the
+message has been received by b because it did not find it in B's pending messages
+
+### Three levels of caching
+
+- **Up for deletion**: These messages may be deleted when not found in an id manager's
+pending message list, or after a long period of time
+  - Pending messages from other clients will eventually become up for deletion
+
+- **Temporarily immune**: These messages are guaranteed to exist in cache until
+a given time, after that they become Up for deletion
+  - Pending messages from other clients start being Temporarily Immune
+
+- **Immune**: These messages are guaranteed to always exist in cache until
+explicitly removed
+  - Pending messages from oneself are Immune
+
+### P2P message delivery validation
+
+Immune pending messages are only deleted when p2p confirmation is established:
+when a p2p connection is established, pending messages from oneself to the target
+are announced, and respective actions (deletion if delivered, delivery and then
+validation again if not) are taken

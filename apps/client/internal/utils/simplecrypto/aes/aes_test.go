@@ -3,7 +3,7 @@ package aes_test
 import (
 	"testing"
 
-	"eaglechat/apps/client/internal/infrastructure/simplecrypto/aes"
+	"eaglechat/apps/client/internal/utils/simplecrypto/aes"
 	"github.com/stretchr/testify/assert"
 )
 

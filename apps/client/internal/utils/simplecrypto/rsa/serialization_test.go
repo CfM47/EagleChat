@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"eaglechat/apps/client/internal/infrastructure/simplecrypto/rsa"
+	"eaglechat/apps/client/internal/utils/simplecrypto/rsa"
 	"github.com/stretchr/testify/assert"
 )
 

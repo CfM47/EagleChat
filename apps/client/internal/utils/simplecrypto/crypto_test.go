@@ -1,10 +1,10 @@
 package simplecrypto_test
 
 import (
+	"eaglechat/apps/client/internal/utils/simplecrypto"
+	"eaglechat/apps/client/internal/utils/simplecrypto/rsa"
 	"testing"
 
-	"eaglechat/apps/client/internal/infrastructure/simplecrypto"
-	"eaglechat/apps/client/internal/infrastructure/simplecrypto/rsa"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -23,14 +23,17 @@ func TestHybridEncryption(t *testing.T) {
 		assert.NotNil(t, envelope)
 
 		// 3. Open the envelope
-		decryptedMessage, err := simplecrypto.Open(envelope, privBob, pubAlice)
+		decryptedMessage, senderPubKey, err := simplecrypto.Open(envelope, privBob)
 		assert.NoError(t, err)
 		assert.Equal(t, originalMessage, decryptedMessage)
+
+		// 4. Verify the returned public key matches the original sender's public key
+		assert.Equal(t, pubAlice.Key, senderPubKey.Key)
 	})
 
 	t.Run("Open Fails With Wrong Recipient Key", func(t *testing.T) {
 		// 1. Generate keys for Alice, Bob, and a malicious actor (Charlie)
-		privAlice, pubAlice, err := rsa.GenerateKeyPair()
+		privAlice, _, err := rsa.GenerateKeyPair()
 		assert.NoError(t, err)
 		_, pubBob, err := rsa.GenerateKeyPair()
 		assert.NoError(t, err)
@@ -43,18 +46,16 @@ func TestHybridEncryption(t *testing.T) {
 		assert.NoError(t, err)
 
 		// 3. Charlie intercepts and tries to open it, which should fail
-		_, err = simplecrypto.Open(envelope, privCharlie, pubAlice)
+		_, _, err = simplecrypto.Open(envelope, privCharlie)
 		assert.Error(t, err)
 		assert.ErrorIs(t, err, simplecrypto.ErrDecryptKey, "Error should be of type ErrDecryptKey")
 	})
 
-	t.Run("Open Fails With Invalid Signature", func(t *testing.T) {
-		// 1. Generate keys for Alice, Bob, and Charlie
+	t.Run("Open Fails With Tampered Signature", func(t *testing.T) {
+		// 1. Generate keys for Alice and Bob
 		privAlice, _, err := rsa.GenerateKeyPair()
 		assert.NoError(t, err)
 		privBob, pubBob, err := rsa.GenerateKeyPair()
-		assert.NoError(t, err)
-		_, pubCharlie, err := rsa.GenerateKeyPair()
 		assert.NoError(t, err)
 
 		// 2. Alice seals a message for Bob
@@ -62,8 +63,11 @@ func TestHybridEncryption(t *testing.T) {
 		envelope, err := simplecrypto.Seal(originalMessage, privAlice, pubBob)
 		assert.NoError(t, err)
 
-		// 3. Bob tries to open it, but mistakenly uses Charlie's public key for verification
-		_, err = simplecrypto.Open(envelope, privBob, pubCharlie)
+		// 3. Tamper with the signature
+		envelope.Signature[0] ^= 0xff
+
+		// 4. Bob tries to open it, which should fail signature verification
+		_, _, err = simplecrypto.Open(envelope, privBob)
 		assert.Error(t, err)
 		assert.ErrorIs(t, err, simplecrypto.ErrInvalidSignature, "Error should be of type ErrInvalidSignature")
 	})
