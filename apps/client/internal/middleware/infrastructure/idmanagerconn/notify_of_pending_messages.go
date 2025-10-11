@@ -16,7 +16,6 @@ type messageTargetRequest struct {
 
 type notifyOfPendingMessagesRequest struct {
 	MessageTargets []messageTargetRequest `json:"message_targets"`
-	CacherID       string                 `json:"cacher_id"`
 }
 
 func (c *idManagerConnectionImpl) NotifyOfPendingMessages(messageTargets []middleware_entities.MessageTarget) error {
@@ -32,7 +31,6 @@ func (c *idManagerConnectionImpl) NotifyOfPendingMessages(messageTargets []middl
 
 	requestBody := notifyOfPendingMessagesRequest{
 		MessageTargets: requestTargets,
-		CacherID:       string(c.ownID),
 	}
 
 	jsonBody, err := json.Marshal(requestBody)
@@ -40,7 +38,14 @@ func (c *idManagerConnectionImpl) NotifyOfPendingMessages(messageTargets []middl
 		return err
 	}
 
-	resp, err := c.client.Post(url, "application/json", bytes.NewBuffer(jsonBody))
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonBody))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("content-type", "application/json")
+	req.Header.Set("X-Client-ID", string(c.ownID))
+
+	resp, err := c.client.Do(req)
 	if err != nil {
 		return err
 	}

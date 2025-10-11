@@ -8,6 +8,7 @@ import (
 	user_cache "eaglechat/apps/client/internal/middleware/domain/repositories/usercache"
 	"eaglechat/apps/client/internal/middleware/domain/services"
 	"eaglechat/apps/client/internal/utils/simplecrypto/rsa"
+	"time"
 )
 
 var _ domain.Middleware = (*Middleware)(nil)
@@ -28,8 +29,14 @@ type Middleware struct {
 
 	sk rsa.PrivateKey
 
-	quit chan struct{}
-}
+	messageSenderTicker *time.Ticker
+		quit                chan struct{}
+	}
+	
+	func (m *Middleware) Shutdown() {
+		m.messageSenderTicker.Stop()
+		close(m.quit)
+	}
 
 type Connector struct {
 	messageCache message_cache.MessageCache

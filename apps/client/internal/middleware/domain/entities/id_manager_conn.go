@@ -6,7 +6,7 @@ import (
 )
 
 type IDManagerConnection interface {
-	QueryUsers([]entities.UserID) (map[entities.UserID]UserData, error)
+	QueryUsers(IDs []entities.UserID, omitDisconnected bool) (map[entities.UserID]UserData, error)
 	NotifyOfPendingMessages([]MessageTarget) error
 	GetPendingMessages() ([]PendingMessage, error)
 }

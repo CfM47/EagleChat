@@ -4,6 +4,7 @@ import (
 	"eaglechat/apps/client/internal/domain/entities"
 	middleware_entities "eaglechat/apps/client/internal/middleware/domain/entities"
 	"eaglechat/apps/client/internal/utils/simplecrypto/rsa"
+	"time"
 )
 
 func (c *Connector) Connect(listenPort uint16, user entities.User, sk rsa.PrivateKey) (Middleware, <-chan entities.Message, error) {
@@ -34,10 +35,12 @@ func (c *Connector) Connect(listenPort uint16, user entities.User, sk rsa.Privat
 
 		receivedMessages: (chan<- entities.Message)(messageChannel),
 
-		quit: make(chan struct{}),
+		quit:                make(chan struct{}),
+		messageSenderTicker: time.NewTicker(messageSenderInterval),
 	}
 
 	go m.routeIncomingMessages()
+	go m.messageSender()
 
 	return m, (<-chan entities.Message)(messageChannel), nil
 }

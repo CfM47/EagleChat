@@ -25,7 +25,7 @@ type userDataResponse struct {
 
 type queryUsersResponse map[string]userDataResponse
 
-func (c *idManagerConnectionImpl) QueryUsers(userIDs []entities.UserID) (map[entities.UserID]middleware_entities.UserData, error) {
+func (c *idManagerConnectionImpl) QueryUsers(userIDs []entities.UserID, omitDisconnected bool) (map[entities.UserID]middleware_entities.UserData, error) {
 	url := fmt.Sprintf("%s/users", c.baseURL)
 
 	stringIDs := make([]string, len(userIDs))
@@ -47,6 +47,9 @@ func (c *idManagerConnectionImpl) QueryUsers(userIDs []entities.UserID) (map[ent
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
+	q := req.URL.Query()
+	q.Add("omit_disconnected", boolStr(omitDisconnected))
+	req.URL.RawQuery = q.Encode()
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -81,4 +84,12 @@ func (c *idManagerConnectionImpl) QueryUsers(userIDs []entities.UserID) (map[ent
 	}
 
 	return result, nil
+}
+
+func boolStr(val bool) string {
+	if val {
+		return "true"
+	} else {
+		return "false"
+	}
 }

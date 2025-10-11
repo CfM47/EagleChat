@@ -3,15 +3,21 @@
 - add id manager pending messages notifier loop (remove ad-hoc notification
 when message fails)
 - add get random user endpoint service for the id manager conn
-- add pending message sender loop
-  - it should prioritize own (immune) messages, the message cache
-  interface should allow for querying them
+- make id manager user query loop be in parallel
 
 ## DONE
 
 - add message receiver loop
   - it will handle messages for oneself and for others
+
 - messages are to be sent in secure envelopes
+
+- add null IP handling when user data is queried for message method of
+middleware
+
+- add pending message sender loop
+  - it should prioritize own (immune) messages, the message cache
+  interface should allow for querying them
 
 ## CANCELLED
 

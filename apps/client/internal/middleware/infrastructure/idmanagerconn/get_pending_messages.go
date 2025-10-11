@@ -10,7 +10,7 @@ import (
 )
 
 type messageTargetResponse struct {
-	UserID    string `json:"user_id"`
+	UserID    string `json:"target_id"`
 	MessageID string `json:"message_id"`
 }
 

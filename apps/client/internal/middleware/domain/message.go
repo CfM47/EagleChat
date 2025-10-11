@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net"
 	"time"
 
 	middleware_entities "eaglechat/apps/client/internal/middleware/domain/entities"
@@ -27,9 +28,13 @@ func (m *Middleware) Message(target entities.User, message entities.Message) err
 		return fmt.Errorf("failed to compose message: %w", err)
 	}
 
-	if err := m.sendP2PMessage(target, msgBytes); err != nil {
-		log.Printf("Failed to send message to %s, storing as pending: %v", target.ID, err)
+	ip, err := m.getUserIfConnected(target.ID)
+	if err != nil {
 		return m.storeAsPending(pendingMsg)
+	}
+
+	if err := m.sendP2PMessage(ip, msgBytes); err != nil {
+		log.Printf("failed to send message to %s, storing as pending: %v", target.ID, err)
 	}
 
 	return nil
@@ -65,15 +70,11 @@ func (m *Middleware) composeP2PMessage(target entities.User, message entities.Me
 }
 
 // sendP2PMessage handles the network logic of sending a message with retries.
-func (m *Middleware) sendP2PMessage(target entities.User, msgBytes []byte) error {
-	data, err := m.getUserData(target.ID)
-	if err != nil {
-		return fmt.Errorf("user %s not found: %w", target.ID, err)
-	}
-
+func (m *Middleware) sendP2PMessage(targetIP net.IP, msgBytes []byte) error {
 	var lastErr error
 	for range maxRetries {
-		if err := m.p2pConnPool.Message(data.IP.String(), fmt.Sprint(m.ownPort), msgBytes); err == nil {
+		err := m.p2pConnPool.Message(targetIP.String(), fmt.Sprint(m.ownPort), msgBytes)
+		if err == nil {
 			return nil // Message sent successfully
 		}
 		lastErr = err
@@ -88,6 +89,18 @@ func (m *Middleware) storeAsPending(pendingMsg middleware_entities.PendingMessag
 	if err := m.messageCache.StoreImmune(pendingMsg); err != nil {
 		return fmt.Errorf("failed to store pending message: %w", err)
 	}
-	// TODO: Notify ID Manager
 	return nil
+}
+
+func (m *Middleware) getUserIfConnected(userID entities.UserID) (net.IP, error) {
+	data, err := m.getUserData([]entities.UserID{userID}, true)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(data) != 1 {
+		return nil, fmt.Errorf("user not found")
+	}
+
+	return *data[userID].IP, nil
 }
