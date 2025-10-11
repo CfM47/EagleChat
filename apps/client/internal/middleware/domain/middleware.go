@@ -4,8 +4,8 @@ import (
 	"eaglechat/apps/client/internal/domain"
 	"eaglechat/apps/client/internal/domain/entities"
 	middleware_entities "eaglechat/apps/client/internal/middleware/domain/entities"
-	message_cache "eaglechat/apps/client/internal/middleware/domain/repositories/message_cache"
-	user_cache "eaglechat/apps/client/internal/middleware/domain/repositories/user_cache"
+	message_cache "eaglechat/apps/client/internal/middleware/domain/repositories/messagecache"
+	user_cache "eaglechat/apps/client/internal/middleware/domain/repositories/usercache"
 	"eaglechat/apps/client/internal/middleware/domain/services"
 	"eaglechat/apps/client/internal/utils/simplecrypto/rsa"
 )

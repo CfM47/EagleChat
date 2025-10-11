@@ -20,6 +20,8 @@ const (
 
 // Message is the high-level orchestrator for sending a message.
 func (m *Middleware) Message(target entities.User, message entities.Message) error {
+	log.SetPrefix("[Message] ")
+
 	pendingMsg, msgBytes, err := m.composeP2PMessage(target, message)
 	if err != nil {
 		return fmt.Errorf("failed to compose message: %w", err)

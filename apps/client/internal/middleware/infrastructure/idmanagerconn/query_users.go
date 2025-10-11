@@ -1,4 +1,4 @@
-package id_manager_conn
+package idmanagerconn
 
 import (
 	"bytes"
@@ -6,6 +6,7 @@ import (
 	"eaglechat/apps/client/internal/utils/simplecrypto/rsa"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 
@@ -67,7 +68,7 @@ func (c *idManagerConnectionImpl) QueryUsers(userIDs []entities.UserID) (map[ent
 		userID := entities.UserID(id)
 		publicKey, err := rsa.PublicKeyFromBytes(data.PublicKey)
 		if err != nil {
-			// FIXME: Decide how to handle invalid public key
+			log.Printf("invalid public key found while querying user '%s' from id manager", userID)
 			continue
 		}
 

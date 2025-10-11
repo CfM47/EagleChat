@@ -1,10 +1,10 @@
-package id_manager_pool
+package idmanagerpool
 
 import (
 	"eaglechat/apps/client/internal/domain/entities"
 	middleware_entities "eaglechat/apps/client/internal/middleware/domain/entities"
 	"eaglechat/apps/client/internal/middleware/domain/services"
-	"eaglechat/apps/client/internal/middleware/infrastructure/id_manager_pool/repositories"
+	"eaglechat/apps/client/internal/middleware/infrastructure/idmanagerpool/repositories"
 	"eaglechat/apps/client/internal/utils/simplecrypto/rsa"
 	"encoding/json"
 	"fmt"

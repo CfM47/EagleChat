@@ -1,4 +1,4 @@
-package id_manager_conn
+package idmanagerconn
 
 import (
 	"bytes"

@@ -1,7 +1,6 @@
-package id_manager_conn
+package idmanagerconn
 
 import (
-	"bytes"
 	"eaglechat/apps/client/internal/domain/entities"
 	"encoding/json"
 	"fmt"
@@ -10,12 +9,8 @@ import (
 	middleware_entities "eaglechat/apps/client/internal/middleware/domain/entities"
 )
 
-type getPendingMessagesRequest struct {
-	TargetID *string `json:"target_id"`
-}
-
 type messageTargetResponse struct {
-	TargetID  string `json:"target_id"`
+	UserID    string `json:"user_id"`
 	MessageID string `json:"message_id"`
 }
 
@@ -23,22 +18,14 @@ type getPendingMessagesResponse struct {
 	MessageTargets []messageTargetResponse `json:"message_targets"`
 }
 
-func (c *idManagerConnectionImpl) GetPendingMessages() ([]middleware_entities.MessageTarget, error) {
+func (c *idManagerConnectionImpl) GetPendingMessages() ([]middleware_entities.PendingMessage, error) {
 	url := fmt.Sprintf("%s/pending-messages", c.baseURL)
 
-	requestBody := getPendingMessagesRequest{
-		TargetID: nil,
-	}
-
-	jsonBody, err := json.Marshal(requestBody)
+	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	req, err := http.NewRequest("GET", url, bytes.NewBuffer(jsonBody))
-	if err != nil {
-		return nil, err
-	}
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := c.client.Do(req)
@@ -56,9 +43,11 @@ func (c *idManagerConnectionImpl) GetPendingMessages() ([]middleware_entities.Me
 		return nil, err
 	}
 
-	result := make([]middleware_entities.MessageTarget, len(response.MessageTargets))
+	result := make([]middleware_entities.PendingMessage, len(response.MessageTargets))
 	for i, mt := range response.MessageTargets {
-		result[i] = middleware_entities.NewMessageTarget(mt.MessageID, entities.UserID(mt.TargetID))
+		result[i] = middleware_entities.PendingMessage{
+			Target: middleware_entities.NewMessageTarget(mt.MessageID, entities.UserID(mt.UserID)),
+		}
 	}
 
 	return result, nil

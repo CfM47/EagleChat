@@ -3,7 +3,7 @@ package middleware
 import (
 	"eaglechat/apps/client/internal/domain/entities"
 	middleware_entities "eaglechat/apps/client/internal/middleware/domain/entities"
-	usercache "eaglechat/apps/client/internal/middleware/domain/repositories/user_cache"
+	usercache "eaglechat/apps/client/internal/middleware/domain/repositories/usercache"
 	"errors"
 	"log"
 )
@@ -11,6 +11,7 @@ import (
 // QueryUser implements domain.Middleware.
 func (m *Middleware) QueryUser(userID entities.UserID) (entities.User, error) {
 	log.SetPrefix("[QueryUser]")
+
 	data, err := m.getUserData(userID)
 	if err != nil {
 		return entities.User{}, err
