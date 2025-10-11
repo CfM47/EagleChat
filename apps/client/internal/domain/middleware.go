@@ -6,7 +6,7 @@ import (
 )
 
 type Middleware interface {
-	Message(userID entities.UserID, message string) error
+	Message(target entities.User, message entities.Message) error
 
 	QueryUser(userID entities.UserID) (entities.User, error)
 }

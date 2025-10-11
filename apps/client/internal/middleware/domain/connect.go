@@ -17,10 +17,12 @@ func (c *Connector) Connect(listenPort uint16, user entities.User, sk rsa.Privat
 		return Middleware{}, nil, err
 	}
 
-	var messageChannel chan entities.Message
+	messageChannel := make(chan entities.Message)
 
-	return Middleware{
+	m := Middleware{
 		ownPort: listenPort,
+		ownUser: user,
+		sk:      sk,
 
 		p2pConnections: make(map[entities.UserID]middleware_entities.P2PConnection),
 		messageCache:   c.messageCache,
@@ -33,5 +35,9 @@ func (c *Connector) Connect(listenPort uint16, user entities.User, sk rsa.Privat
 		receivedMessages: (chan<- entities.Message)(messageChannel),
 
 		quit: make(chan struct{}),
-	}, (<-chan entities.Message)(messageChannel), nil
+	}
+
+	go m.routeIncomingMessages()
+
+	return m, (<-chan entities.Message)(messageChannel), nil
 }

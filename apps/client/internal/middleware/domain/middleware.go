@@ -14,6 +14,7 @@ var _ domain.Middleware = (*Middleware)(nil)
 
 type Middleware struct {
 	ownPort uint16
+	ownUser entities.User
 
 	p2pConnections map[entities.UserID]middleware_entities.P2PConnection
 	messageCache   message_cache.MessageCache
