@@ -9,6 +9,8 @@ import (
 	"os"
 	"sync"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type JSONUserRepository struct {
@@ -139,4 +141,44 @@ func (r *JSONUserRepository) UpdateIP(ID string, ip net.IP) error {
 	}
 
 	return repositories.ErrUserNotFound
+}
+
+func (r *JSONUserRepository) Update(user *entities.User) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	users, err := r.load()
+	if err != nil {
+		return err
+	}
+
+	for i, u := range users {
+		if u.ID == user.ID {
+			users[i] = user
+			return r.save(users)
+		}
+	}
+
+	return repositories.ErrUserNotFound
+}
+
+func (r *JSONUserRepository) Create(user *entities.User) (*entities.User, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	users, err := r.load()
+	if err != nil {
+		return nil, err
+	}
+
+	// Generate a new UUID for the user
+	user.ID = uuid.New().String()
+
+	users = append(users, user)
+
+	if err := r.save(users); err != nil {
+		return nil, err
+	}
+
+	return user, nil
 }

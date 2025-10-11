@@ -12,6 +12,8 @@ type UserRepository interface {
 	FindAll() ([]*entities.User, error)
 	Delete(ID string) error
 	UpdateIP(ID string, ip net.IP) error
+	Update(user *entities.User) error
+	Create(user *entities.User) (*entities.User, error)
 }
 
 var ErrUserNotFound = errors.New("user not found")
