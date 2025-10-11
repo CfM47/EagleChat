@@ -10,6 +10,8 @@ import (
 type IDManagerPool interface {
 	GetAny() (middleware_entities.IDManagerConnection, error)
 	GetAll() ([]middleware_entities.IDManagerConnection, error)
+	Close() error
+	Done() <-chan struct{}
 }
 
 type IDManagerPoolBuilder func(privateKey rsa.PrivateKey, connectionBuilder middleware_entities.IDManagerConnBuilder, ownID entities.UserID) (IDManagerPool, error)
