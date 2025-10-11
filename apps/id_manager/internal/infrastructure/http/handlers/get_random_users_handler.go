@@ -10,10 +10,10 @@ import (
 )
 
 type GetRandomUsersHandler struct {
-	useCase *usecases.GetRandomUsersUseCase
+	useCase usecases.UseCase[*usecases.GetRandomUsersRequest, *usecases.GetRandomUsersResponse]
 }
 
-func NewGetRandomUsersHandler(uc *usecases.GetRandomUsersUseCase) *GetRandomUsersHandler {
+func NewGetRandomUsersHandler(uc usecases.UseCase[*usecases.GetRandomUsersRequest, *usecases.GetRandomUsersResponse]) *GetRandomUsersHandler {
 	return &GetRandomUsersHandler{useCase: uc}
 }
 
@@ -29,7 +29,7 @@ func (h *GetRandomUsersHandler) Handle(c *gin.Context) {
 		Amount: amount,
 	}
 
-	resp, err := h.useCase.Execute(&req)
+	resp, err := h.useCase.Execute(c.Request.Context(), &req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		return
