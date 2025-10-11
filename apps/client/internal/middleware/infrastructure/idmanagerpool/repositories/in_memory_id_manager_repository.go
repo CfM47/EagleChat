@@ -14,9 +14,9 @@ type expiringIDManagerData struct {
 	lastSeen time.Time
 }
 
-// inMemoryIdManagerRepository is a thread-safe, in-memory implementation of the
+// inMemoryIDManagerRepository is a thread-safe, in-memory implementation of the
 // IDManagerRepository that automatically prunes stale entries.
-type inMemoryIdManagerRepository struct {
+type inMemoryIDManagerRepository struct {
 	mu       sync.RWMutex
 	managers map[string]expiringIDManagerData
 }
@@ -24,7 +24,7 @@ type inMemoryIdManagerRepository struct {
 // NewInMemoryIDManagerRepository creates a new in-memory repository and starts a
 // background goroutine to prune stale entries.
 func NewInMemoryIDManagerRepository(expirationTime time.Duration) IDManagerRepository {
-	repo := &inMemoryIdManagerRepository{
+	repo := &inMemoryIDManagerRepository{
 		managers: make(map[string]expiringIDManagerData),
 	}
 
@@ -33,7 +33,7 @@ func NewInMemoryIDManagerRepository(expirationTime time.Duration) IDManagerRepos
 	return repo
 }
 
-func (r *inMemoryIdManagerRepository) Add(id string, data entities.IDManagerData) {
+func (r *inMemoryIDManagerRepository) Add(id string, data entities.IDManagerData) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -43,7 +43,7 @@ func (r *inMemoryIdManagerRepository) Add(id string, data entities.IDManagerData
 	}
 }
 
-func (r *inMemoryIdManagerRepository) Get(id string) (entities.IDManagerData, bool) {
+func (r *inMemoryIDManagerRepository) Get(id string) (entities.IDManagerData, bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -54,7 +54,7 @@ func (r *inMemoryIdManagerRepository) Get(id string) (entities.IDManagerData, bo
 	return expiringData.data, true
 }
 
-func (r *inMemoryIdManagerRepository) GetAll() []entities.IDManagerData {
+func (r *inMemoryIDManagerRepository) GetAll() []entities.IDManagerData {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -66,7 +66,7 @@ func (r *inMemoryIdManagerRepository) GetAll() []entities.IDManagerData {
 }
 
 // startPruning runs a loop that periodically removes stale entries from the repository.
-func (r *inMemoryIdManagerRepository) startPruning(expirationTime time.Duration) {
+func (r *inMemoryIDManagerRepository) startPruning(expirationTime time.Duration) {
 	ticker := time.NewTicker(pruneInterval)
 	defer ticker.Stop()
 
@@ -76,7 +76,7 @@ func (r *inMemoryIdManagerRepository) startPruning(expirationTime time.Duration)
 }
 
 // prune removes entries that have not been seen for longer than the expiration time.
-func (r *inMemoryIdManagerRepository) prune(expirationTime time.Duration) {
+func (r *inMemoryIDManagerRepository) prune(expirationTime time.Duration) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
