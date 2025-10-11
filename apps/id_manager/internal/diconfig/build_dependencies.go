@@ -15,6 +15,7 @@ type Container struct {
 	GetRandomUsersHandler       handlers.Handler
 	QueryPendingMessagesHandler handlers.Handler
 	AddPendingMessagesHandler   handlers.Handler
+	RegisterUserHandler         handlers.Handler
 }
 
 func NewContainer() (*Container, error) {
@@ -41,17 +42,20 @@ func NewContainer() (*Container, error) {
 	getRandomUsersUC := usecases.NewGetRandomUsersUseCase(userRepo)
 	queryPendingMessagesUC := usecases.NewQueryPendingMessagesUseCase(pendingMessagesRepo)
 	addPendingMessagesUC := usecases.NewAddPendingMessagesUseCase(pendingMessagesRepo)
+	registerUserUC := usecases.NewRegisterUserUseCase(userRepo)
 
 	// Initialize handlers
 	getRandomUsersHandler := handlers.NewGetRandomUsersHandler(getRandomUsersUC)
 	queryUserHandler := handlers.NewQueryUserDataHandler(queryUserDataUC)
 	queryPendingMessagesHandler := handlers.NewQueryPendingMessagesHandler(queryPendingMessagesUC)
 	addPendingMessagesHandler := handlers.NewAddPendingMessagesHandler(addPendingMessagesUC)
+	registerUserHandler := handlers.NewRegisterUserHandler(registerUserUC)
 
 	return &Container{
 		QueryUserHandler:            queryUserHandler,
 		GetRandomUsersHandler:       getRandomUsersHandler,
 		QueryPendingMessagesHandler: queryPendingMessagesHandler,
 		AddPendingMessagesHandler:   addPendingMessagesHandler,
+		RegisterUserHandler:         registerUserHandler,
 	}, nil
 }

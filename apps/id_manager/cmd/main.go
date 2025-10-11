@@ -28,6 +28,11 @@ func main() {
 			Handler: container.GetRandomUsersHandler,
 		},
 		{
+			Method:  http.MethodPost,
+			Path:    "/users/register",
+			Handler: container.RegisterUserHandler,
+		},
+		{
 			Method:  http.MethodGet,
 			Path:    "/pending-messages",
 			Handler: container.QueryPendingMessagesHandler,
