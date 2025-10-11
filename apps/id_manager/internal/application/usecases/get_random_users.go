@@ -1,6 +1,7 @@
 package usecases
 
 import (
+	"context"
 	"math/rand"
 
 	"eaglechat/apps/id_manager/internal/domain/entities"
@@ -23,7 +24,7 @@ type GetRandomUsersResponse struct {
 	Users []UserData `json:"users"`
 }
 
-func (uc *GetRandomUsersUseCase) Execute(req *GetRandomUsersRequest) (*GetRandomUsersResponse, error) {
+func (uc *GetRandomUsersUseCase) Execute(ctx context.Context, req *GetRandomUsersRequest) (*GetRandomUsersResponse, error) {
 	allUsers, err := uc.repo.FindAll()
 	if err != nil {
 		return nil, err

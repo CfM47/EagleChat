@@ -1,6 +1,7 @@
 package usecases
 
 import (
+	"context"
 	"eaglechat/apps/id_manager/internal/domain/repositories/user"
 	"net"
 )
@@ -26,7 +27,7 @@ type UserData struct {
 
 type QueryUserResponse map[string]*UserData
 
-func (uc *QueryUserDataUseCase) Execute(req *QueryUserRequest) (QueryUserResponse, error) {
+func (uc *QueryUserDataUseCase) Execute(ctx context.Context, req *QueryUserRequest) (QueryUserResponse, error) {
 	result := make(QueryUserResponse)
 
 	for _, id := range req.Ids {

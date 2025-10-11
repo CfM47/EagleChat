@@ -9,10 +9,10 @@ import (
 )
 
 type QueryUserDataHandler struct {
-	useCase *usecases.QueryUserDataUseCase
+	useCase usecases.UseCase[*usecases.QueryUserRequest, usecases.QueryUserResponse]
 }
 
-func NewQueryUserDataHandler(uc *usecases.QueryUserDataUseCase) *QueryUserDataHandler {
+func NewQueryUserDataHandler(uc usecases.UseCase[*usecases.QueryUserRequest, usecases.QueryUserResponse]) *QueryUserDataHandler {
 	return &QueryUserDataHandler{useCase: uc}
 }
 
@@ -24,7 +24,7 @@ func (h *QueryUserDataHandler) Handle(c *gin.Context) {
 		return
 	}
 
-	resp, err := h.useCase.Execute(&req)
+	resp, err := h.useCase.Execute(c.Request.Context(), &req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		return
