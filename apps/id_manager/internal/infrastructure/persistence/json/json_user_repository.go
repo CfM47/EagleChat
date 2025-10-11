@@ -2,7 +2,7 @@ package json
 
 import (
 	"eaglechat/apps/id_manager/internal/domain/entities"
-	repository "eaglechat/apps/id_manager/internal/domain/repositories/user"
+	"eaglechat/apps/id_manager/internal/domain/repositories"
 	"encoding/json"
 	"errors"
 	"net"
@@ -16,7 +16,7 @@ type JSONUserRepository struct {
 	mu       sync.RWMutex
 }
 
-var _ repository.UserRepository = (*JSONUserRepository)(nil)
+var _ repositories.UserRepository = (*JSONUserRepository)(nil)
 
 func NewJSONUserRepository(filePath string) *JSONUserRepository {
 	return &JSONUserRepository{filePath: filePath}
@@ -80,7 +80,7 @@ func (r *JSONUserRepository) FindByID(ID string) (*entities.User, error) {
 			return u, nil
 		}
 	}
-	return nil, repository.ErrUserNotFound
+	return nil, repositories.ErrUserNotFound
 }
 
 func (r *JSONUserRepository) FindAll() ([]*entities.User, error) {
@@ -117,7 +117,7 @@ func (r *JSONUserRepository) Delete(ID string) error {
 			return r.save(users)
 		}
 	}
-	return repository.ErrUserNotFound
+	return repositories.ErrUserNotFound
 }
 
 func (r *JSONUserRepository) UpdateIP(ID string, ip net.IP) error {
@@ -138,5 +138,5 @@ func (r *JSONUserRepository) UpdateIP(ID string, ip net.IP) error {
 		}
 	}
 
-	return repository.ErrUserNotFound
+	return repositories.ErrUserNotFound
 }

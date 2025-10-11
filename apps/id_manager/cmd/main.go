@@ -20,12 +20,22 @@ func main() {
 		{
 			Method:  http.MethodGet,
 			Path:    "/users",
-			Handler: container.QueryHandler,
+			Handler: container.QueryUserHandler,
 		},
 		{
 			Method:  http.MethodGet,
 			Path:    "/users/random",
 			Handler: container.GetRandomUsersHandler,
+		},
+		{
+			Method:  http.MethodGet,
+			Path:    "/pending-messages",
+			Handler: container.QueryPendingMessagesHandler,
+		},
+		{
+			Method:  http.MethodPost,
+			Path:    "pending-messages",
+			Handler: container.AddPendingMessagesHandler,
 		},
 	}
 
