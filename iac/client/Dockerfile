@@ -16,7 +16,8 @@ RUN go mod download
 
 # Change workdir back to the root to copy all source code
 WORKDIR /app
-COPY . .
+COPY ./apps/client ./apps/client
+COPY ./common ./common
 
 # Build the application
 WORKDIR /app/apps/client

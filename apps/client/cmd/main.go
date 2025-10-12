@@ -13,57 +13,48 @@ import (
 	jsonusercache "eaglechat/apps/client/internal/middleware/infrastructure/usercache/json"
 	"eaglechat/apps/client/internal/tui"
 	"eaglechat/apps/client/internal/ui/controller"
+	"eaglechat/common/ezlog"
+	"eaglechat/common/ezlog/ezzerolog"
 	"eaglechat/common/multicast/implementation"
 	"log"
 	"os"
-	"path/filepath"
 	"time"
 )
 
 const (
-	idManagerPort = "8081"
+	idManagerPort = "8080"
 )
 
 func main() {
-	logFile, err := setupLogger()
-	if err != nil {
-		log.Fatalf("failed to set up logger: %v", err)
-	}
-	defer logFile.Close()
+	setupFallbackLogger()
+
+	log.Print("Setting logger factory...")
+	ezlog.SetLoggerFactory(ezzerolog.NewFactory())
+
+	ctx := ezlog.NewLoggerContext("main")
+
+	ezlog.Log(ctx).Info("Logger initialized")
 
 	tui := tui.New()
 	clientRepo, err := sqliterepository.NewSQLiteRepository("./data/client.db")
 	if err != nil {
-		log.Fatalf("error creating client repository: %v", err)
+		ezlog.Log(ctx).Errorf("error creating client repository: %v", err)
+		panic(err)
 	}
 
 	connector, registerer, err := buildMiddlewareDeps()
 	if err != nil {
-		log.Fatalf("error creating middleware dependencies: %v", err)
+		ezlog.Log(ctx).Errorf("error creating middleware dependencies: %v", err)
+		panic(err)
 	}
 
 	controller := controller.New(tui, registerer, connector, clientRepo)
 
 	err = controller.Run()
 	if err != nil {
-		log.Fatalf("error running controller: %v", err)
+		ezlog.Log(ctx).Errorf("error running controller: %v", err)
+		panic(err)
 	}
-}
-
-func setupLogger() (*os.File, error) {
-	logDir := "./data/logs"
-	if err := os.MkdirAll(logDir, 0755); err != nil {
-		return nil, err
-	}
-
-	logPath := filepath.Join(logDir, "client.log")
-	file, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		return nil, err
-	}
-
-	log.SetOutput(file)
-	return file, nil
 }
 
 func buildMiddlewareDeps() (services.Connector, services.Registerer, error) {
@@ -107,6 +98,15 @@ func buildConnector() (services.Connector, error) {
 
 		userCache,
 	), nil
+}
+
+func setupFallbackLogger() {
+	os.MkdirAll("/data", 0755)
+	file, err := os.OpenFile("/data/client.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		panic(err)
+	}
+	log.SetOutput(file)
 }
 
 func buildRegisterer() services.Registerer {

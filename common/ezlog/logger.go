@@ -2,6 +2,7 @@ package ezlog
 
 import (
 	"context"
+	"log"
 )
 
 // Logger defines a standardized logging interface for the application.
@@ -86,6 +87,8 @@ func Log(ctx context.Context) Logger {
 	if logger, ok := ctx.Value(loggerCtxKey).(Logger); ok {
 		return logger
 	}
+
+	log.Print("WARNING: nop logger called")
 	return nop
 }
 

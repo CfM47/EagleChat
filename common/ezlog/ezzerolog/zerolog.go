@@ -1,5 +1,5 @@
 // Package logging provides the concrete, zerolog-based implementation of the logging service.
-package logging
+package ezzerolog
 
 import (
 	"bytes"
@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
@@ -53,8 +54,10 @@ func (w *customWriter) Write(p []byte) (n int, err error) {
 func init() {
 	logFilePath := os.Getenv("LOGGER_PATH")
 	if logFilePath == "" {
-		logFilePath = "/data/log"
+		logFilePath = "/data/ezlog"
 	}
+
+	os.MkdirAll(filepath.Dir(logFilePath), 0755)
 
 	file, err := os.OpenFile(logFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
