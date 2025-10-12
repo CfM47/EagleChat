@@ -8,9 +8,8 @@ import (
 	"eaglechat/common/multicast/implementation"
 	"eaglechat/common/simplecrypto/rsa"
 	"fmt"
+	"net"
 	"time"
-
-	multicast "eaglechat/common/multicast/interface"
 )
 
 // registererImpl implements the services.Registerer interface.
@@ -18,6 +17,8 @@ type registererImpl struct {
 	multicastAddress    string
 	idManagerPort       string
 	registrationTimeout time.Duration
+
+	foundIDManager chan struct{}
 }
 
 // NewRegisterer creates a new Registerer.
@@ -27,6 +28,11 @@ func NewRegisterer(multicastAddress, idManagerPort string, timeout time.Duration
 		idManagerPort:       idManagerPort,
 		registrationTimeout: timeout,
 	}
+}
+
+type IDManagerData struct {
+	IP   net.IP
+	Port uint16
 }
 
 // Register orchestrates the discovery and HTTP registration process.
@@ -43,13 +49,14 @@ func (r *registererImpl) Register(ctx context.Context, username string, sk rsa.P
 	}
 	defer multicastNet.Close()
 
-	idManagerChan := make(chan multicast.IDManagerMessage, 1)
+	idManagerChan := make(chan IDManagerData, 1)
 
 	// 2: maximum amount of goroutines
 	errChan := make(chan error, 2)
 
 	go r.broadcastLoop(ctx, multicastNet, errChan)
 	go r.listenForIDManager(ctx, multicastNet, idManagerChan, errChan)
+	go r.tryDefaultIDManager(ctx, idManagerChan)
 
 	select {
 	case <-ctx.Done():
@@ -57,7 +64,9 @@ func (r *registererImpl) Register(ctx context.Context, username string, sk rsa.P
 	case err := <-errChan:
 		return entities.User{}, err
 	case idManager := <-idManagerChan:
-		ezlog.Log(ctx).Infof("Discovered ID Manager %s at %s", idManager.ID, idManager.IP)
-		return r.performHTTPRequest(ctx, username, sk.PublicKey(), idManager.IP)
+		r.foundIDManager <- struct{}{}
+
+		ezlog.Log(ctx).Infof("Discovered ID Manager at %s", idManager.IP)
+		return r.performHTTPRequest(ctx, username, sk.PublicKey(), idManager.IP.String())
 	}
 }
