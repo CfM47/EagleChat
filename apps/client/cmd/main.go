@@ -90,7 +90,7 @@ func buildConnector() (services.Connector, error) {
 	idManagerConnectionBuilder := idmanagerconn.BuildIDManagerConnection
 	idManagerPoolBuilder := idmanagerpool.BuildIDManagerPool
 
-	userCache, err := jsonusercache.NewJSONUserCache("./data/message_cache.json", time.Second*10)
+	userCache, err := jsonusercache.NewJSONUserCache("./data/user_cache.json", time.Second*10)
 	if err != nil {
 		return nil, err
 	}
