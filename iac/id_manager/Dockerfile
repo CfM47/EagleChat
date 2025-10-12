@@ -5,10 +5,11 @@ FROM golang:latest AS builder
 WORKDIR /app
 
 # Copy all go.mod and go.sum files to download dependencies efficiently
-# This leverages Docker's layer caching.
+COPY go.work go.work.sum ./
 COPY apps/id_manager/go.mod apps/id_manager/go.sum ./apps/id_manager/
 COPY apps/client/go.mod apps/client/go.sum ./apps/client/
-COPY packages/crypto/go.mod ./packages/crypto/
+COPY common/go.mod ./common/
+
 
 # Set the workdir to the specific app we are building to download its specific dependencies
 WORKDIR /app/apps/id_manager

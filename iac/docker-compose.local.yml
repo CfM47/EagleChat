@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  id_manager:
+    image: eaglechat-id_manager:latest
+    ports:
+      - "8080:8080"
+    networks:
+      - eaglechat_net
+    volumes:
+      - id_manager_data:/data
+
+  client:
+    image: eaglechat-client:latest
+    networks:
+      - eaglechat_net
+    depends_on:
+      - id_manager
+    command: ["/client", "id_manager", "8080"]
+    stdin_open: true
+    tty: true
+
+networks:
+  eaglechat_net:
+    driver: overlay
+
+volumes:
+  id_manager_data:
