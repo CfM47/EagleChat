@@ -29,7 +29,7 @@ func (r *registererImpl) performHTTPRequest(ctx context.Context, username string
 
 	pubKeyBytes, err := pk.ToBytes()
 	if err != nil {
-		return entities.User{}, fmt.Errorf("failed to serialize public key: %w", err)
+		return entities.User{}, fmt.Errorf("failed to serialize public key: %v", err)
 	}
 
 	reqBody := requestBody{
