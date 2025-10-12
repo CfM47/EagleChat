@@ -7,7 +7,10 @@ import (
 
 	"eaglechat/apps/id_manager/internal/application/usecases"
 	"eaglechat/apps/id_manager/internal/infrastructure/http/handlers"
+	"eaglechat/apps/id_manager/internal/infrastructure/multicast"
 	persistence "eaglechat/apps/id_manager/internal/infrastructure/persistence/json"
+	mc "eaglechat/common/multicast/implementation"
+	multicast_if "eaglechat/common/multicast/interface"
 )
 
 type Container struct {
@@ -16,6 +19,7 @@ type Container struct {
 	QueryPendingMessagesHandler handlers.Handler
 	AddPendingMessagesHandler   handlers.Handler
 	RegisterUserHandler         handlers.Handler
+	MulticastNet                multicast_if.MulticastNetwork
 }
 
 func NewContainer() (*Container, error) {
@@ -33,6 +37,18 @@ func NewContainer() (*Container, error) {
 	userFile := filepath.Join(dataDir, "users.json")
 	pendingMessagesFile := filepath.Join(dataDir, "pending_messages.json")
 
+	// Initialize multicast network
+	multicastNet, err := mc.New(mc.DefaultUDPAddress)
+	if err != nil {
+		return nil, fmt.Errorf("error creating multicast network: %v", err)
+	}
+
+	// Initialize broadcaster
+	broadcaster, err := multicast.NewBroadcaster(multicastNet)
+	if err != nil {
+		return nil, fmt.Errorf("error creating broadcaster: %v", err)
+	}
+
 	// Initialize repositories
 	userRepo := persistence.NewJSONUserRepository(userFile)
 	pendingMessagesRepo := persistence.NewJSONPendingMessageRepository(pendingMessagesFile)
@@ -42,7 +58,7 @@ func NewContainer() (*Container, error) {
 	getRandomUsersUC := usecases.NewGetRandomUsersUseCase(userRepo)
 	queryPendingMessagesUC := usecases.NewQueryPendingMessagesUseCase(pendingMessagesRepo)
 	addPendingMessagesUC := usecases.NewAddPendingMessagesUseCase(pendingMessagesRepo)
-	registerUserUC := usecases.NewRegisterUserUseCase(userRepo)
+	registerUserUC := usecases.NewRegisterUserUseCase(userRepo, broadcaster)
 
 	// Initialize handlers
 	getRandomUsersHandler := handlers.NewGetRandomUsersHandler(getRandomUsersUC)
@@ -57,5 +73,6 @@ func NewContainer() (*Container, error) {
 		QueryPendingMessagesHandler: queryPendingMessagesHandler,
 		AddPendingMessagesHandler:   addPendingMessagesHandler,
 		RegisterUserHandler:         registerUserHandler,
+		MulticastNet:                multicastNet,
 	}, nil
 }

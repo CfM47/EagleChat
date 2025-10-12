@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"net"
 	"net/http"
 
 	"eaglechat/apps/id_manager/internal/application/usecases"
@@ -8,10 +9,10 @@ import (
 )
 
 type RegisterUserHandler struct {
-	useCase usecases.UseCase[*usecases.RegisterUserRequest, *usecases.RegisterUserResponse]
+	useCase *usecases.RegisterUserUseCase
 }
 
-func NewRegisterUserHandler(uc usecases.UseCase[*usecases.RegisterUserRequest, *usecases.RegisterUserResponse]) *RegisterUserHandler {
+func NewRegisterUserHandler(uc *usecases.RegisterUserUseCase) *RegisterUserHandler {
 	return &RegisterUserHandler{useCase: uc}
 }
 
@@ -22,7 +23,9 @@ func (h *RegisterUserHandler) Handle(c *gin.Context) {
 		return
 	}
 
-	resp, err := h.useCase.Execute(c.Request.Context(), &req)
+	ip := net.ParseIP(c.ClientIP())
+
+	resp, err := h.useCase.Execute(c.Request.Context(), &req, ip)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		return

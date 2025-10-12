@@ -13,7 +13,8 @@ import (
 
 func mockUser() *entities.User {
 	id := entities.NewUUID()
-	return entities.NewUser(id, fmt.Sprintf("user-%s", id), fmt.Sprintf("pk-%s", id))
+	ip := net.ParseIP("127.0.0.1")
+	return entities.NewUser(id, fmt.Sprintf("user-%s", id), fmt.Appendf(nil, "pk-%s", id), ip)
 }
 
 func RunUserRepositoryTests(t *testing.T, repoFactory func(t *testing.T) (UserRepository, func())) {
@@ -78,7 +79,7 @@ func RunUserRepositoryTests(t *testing.T, repoFactory func(t *testing.T) (UserRe
 		require.NoError(t, err)
 		updatedUser, err := repo.FindByID(user.ID)
 		require.NoError(t, err)
-		assert.True(t, ip.Equal(*updatedUser.IP))
+		assert.True(t, ip.Equal(updatedUser.IP))
 	})
 
 	t.Run("deletes a user", func(t *testing.T) {
@@ -206,7 +207,7 @@ func RunUserRepositoryTests(t *testing.T, repoFactory func(t *testing.T) (UserRe
 
 		assert.Equal(t, user1BeforeUpdate, user1AfterUpdate)
 		assert.Equal(t, user3BeforeUpdate, user3AfterUpdate)
-		assert.True(t, newIP.Equal(*user2AfterUpdate.IP))
+		assert.True(t, newIP.Equal(user2AfterUpdate.IP))
 	})
 
 	t.Run("updates LastSeen when IP is updated", func(t *testing.T) {
@@ -230,7 +231,7 @@ func RunUserRepositoryTests(t *testing.T, repoFactory func(t *testing.T) (UserRe
 		updatedUser, err := repo.FindByID(user.ID)
 		require.NoError(t, err)
 		assert.True(t, updatedUser.LastSeen.After(initialLastSeen) || updatedUser.LastSeen.Equal(initialLastSeen))
-		assert.True(t, newIP.Equal(*updatedUser.IP))
+		assert.True(t, newIP.Equal(updatedUser.IP))
 	})
 
 	t.Run("returns nil IP when IP is expired", func(t *testing.T) {
@@ -242,8 +243,8 @@ func RunUserRepositoryTests(t *testing.T, repoFactory func(t *testing.T) (UserRe
 
 		// Set an IP with an expired LastSeen
 		ip := net.ParseIP("192.0.2.1")
-		user.IP = &ip
-		user.LastSeen = entities.NewUser("", "", "").LastSeen.Add(-entities.IPExpirationDuration - 1*time.Hour)
+		user.IP = ip
+		user.LastSeen = time.Now().UTC().Add(-entities.IPExpirationDuration - 1*time.Hour)
 		require.NoError(t, repo.Save(user))
 
 		// Act
@@ -272,19 +273,19 @@ func RunUserRepositoryTests(t *testing.T, repoFactory func(t *testing.T) (UserRe
 		// Assert
 		require.NoError(t, err)
 		assert.NotNil(t, foundUser.IP, "IP should not be nil when not expired")
-		assert.True(t, ip.Equal(*foundUser.IP))
+		assert.True(t, ip.Equal(foundUser.IP))
 	})
 
 	t.Run("returns nil IP for expired IPs in FindAll", func(t *testing.T) {
 		// Arrange
 		repo, cleanup := repoFactory(t)
 		defer cleanup()
-		
+
 		// Create user with expired IP
 		user1 := mockUser()
 		ip1 := net.ParseIP("192.0.2.1")
-		user1.IP = &ip1
-		user1.LastSeen = entities.NewUser("", "", "").LastSeen.Add(-entities.IPExpirationDuration - 1*time.Hour)
+		user1.IP = ip1
+		user1.LastSeen = time.Now().UTC().Add(-entities.IPExpirationDuration - 1*time.Hour)
 		require.NoError(t, repo.Save(user1))
 
 		// Create user with valid IP
@@ -314,6 +315,6 @@ func RunUserRepositoryTests(t *testing.T, repoFactory func(t *testing.T) (UserRe
 		require.NotNil(t, foundUser2)
 		assert.Nil(t, foundUser1.IP, "User1 IP should be nil (expired)")
 		assert.NotNil(t, foundUser2.IP, "User2 IP should not be nil (not expired)")
-		assert.True(t, ip2.Equal(*foundUser2.IP))
+		assert.True(t, ip2.Equal(foundUser2.IP))
 	})
 }
