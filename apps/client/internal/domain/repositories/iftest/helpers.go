@@ -3,7 +3,7 @@ package iftest
 import (
 	"eaglechat/apps/client/internal/domain/entities"
 	"eaglechat/apps/client/internal/domain/repositories"
-	"eaglechat/apps/client/internal/utils/simplecrypto/rsa"
+	"eaglechat/common/simplecrypto/rsa"
 	"fmt"
 	"math/rand"
 	"sync"

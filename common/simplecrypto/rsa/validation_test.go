@@ -1,9 +1,9 @@
 package rsa_test
 
 import (
+	"eaglechat/common/simplecrypto/rsa"
 	"testing"
 
-	"eaglechat/apps/client/internal/utils/simplecrypto/rsa"
 	"github.com/stretchr/testify/assert"
 )
 
