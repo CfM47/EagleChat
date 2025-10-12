@@ -17,7 +17,8 @@ RUN go mod download
 
 # Change workdir back to the root to copy all source code
 WORKDIR /app
-COPY . .
+COPY ./apps/id_manager ./apps/id_manager
+COPY ./common ./commmon
 
 # Build the application from within its directory
 WORKDIR /app/apps/id_manager
