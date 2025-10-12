@@ -38,7 +38,6 @@ type IDManagerData struct {
 // Register orchestrates the discovery and HTTP registration process.
 func (r *registererImpl) Register(ctx context.Context, username string, sk rsa.PrivateKey) (entities.User, error) {
 	ctx, cancel := context.WithTimeout(ctx, r.registrationTimeout)
-	ctx = ezlog.WithComponentPrefix(ctx, "Registerer")
 	ezlog.Log(ctx).Info("beginning registration process")
 
 	defer cancel()
