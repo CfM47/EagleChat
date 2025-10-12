@@ -16,19 +16,19 @@ func (c *Controller) handleSendMessage(content string) {
 	}
 
 	// Get the full user entity for the target.
-	targetUser, err := c.userRepo.Get(entities.UserID(c.activeChatID))
+	targetUser, err := c.repository.GetUser(entities.UserID(c.activeChatID))
 	if err != nil {
 		log.Printf("Cannot send message: could not find user %s: %v", c.activeChatID, err)
 		return
 	}
 
-	self, err := c.userRepo.GetOwnProfile()
+	self, err := c.repository.GetOwnProfile()
 	if err != nil {
 		log.Printf("Could not get own profile: %v", err)
 		return
 	}
 
-	message := entities.NewMessage(self.User, content)
+	message := entities.NewMessage(self.User, targetUser, content)
 
 	log.Printf("Sending message to %s", c.activeChatID)
 	go func() {
@@ -41,14 +41,14 @@ func (c *Controller) handleSendMessage(content string) {
 func (c *Controller) handleIncomingMessage(msg entities.Message) {
 	log.Printf("Handling incoming message from %s", msg.Sender.ID)
 
-	if err := c.messageRepo.Save(msg); err != nil {
+	if err := c.repository.SaveMessage(msg); err != nil {
 		log.Printf("Failed to save incoming message: %v", err)
 		return
 	}
 
 	// If the message is not for the currently active chat, increment unread count.
 	if string(msg.Sender.ID) != c.activeChatID {
-		if err := c.messageRepo.IncrementUnreadCount(msg.Sender.ID); err != nil {
+		if err := c.repository.IncrementUnreadCount(msg.Sender.ID); err != nil {
 			log.Printf("Failed to increment unread count: %v", err)
 		}
 	}

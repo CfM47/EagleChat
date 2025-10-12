@@ -15,13 +15,13 @@ func NewPendingMessage(target MessageTarget, content []byte) PendingMessage {
 }
 
 type MessageTarget struct {
-	ID     string
-	Target entities.UserID
+	ID       string
+	TargetID entities.UserID
 }
 
 func NewMessageTarget(ID string, target entities.UserID) MessageTarget {
 	return MessageTarget{
-		ID:     ID,
-		Target: target,
+		ID:       ID,
+		TargetID: target,
 	}
 }

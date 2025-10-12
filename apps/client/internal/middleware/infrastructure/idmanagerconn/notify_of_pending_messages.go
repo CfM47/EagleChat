@@ -24,7 +24,7 @@ func (c *idManagerConnectionImpl) NotifyOfPendingMessages(messageTargets []middl
 	requestTargets := make([]messageTargetRequest, len(messageTargets))
 	for i, mt := range messageTargets {
 		requestTargets[i] = messageTargetRequest{
-			TargetID:  string(mt.Target),
+			TargetID:  string(mt.TargetID),
 			MessageID: mt.ID,
 		}
 	}

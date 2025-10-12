@@ -18,11 +18,11 @@ func (c *Controller) render() {
 		}
 
 	case models.ChatState:
-		overviews, err := c.messageRepo.GetAllChatOverviews()
+		overviews, err := c.repository.GetAllChatOverviews()
 		if err != nil {
 			log.Printf("Failed to get chat overviews: %v", err)
 		}
-		activeChatMessages, err := c.messageRepo.GetChat(entities.UserID(c.activeChatID))
+		activeChatMessages, err := c.repository.GetChat(entities.UserID(c.activeChatID))
 		if err != nil {
 			log.Printf("Failed to get active chat: %v", err)
 		}

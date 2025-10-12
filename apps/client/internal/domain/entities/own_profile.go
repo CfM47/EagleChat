@@ -7,3 +7,10 @@ type OwnProfile struct {
 	User       User
 	PrivateKey rsa.PrivateKey
 }
+
+func NewOwnProfile(user User, sk rsa.PrivateKey) OwnProfile {
+	return OwnProfile{
+		User:       user,
+		PrivateKey: sk,
+	}
+}

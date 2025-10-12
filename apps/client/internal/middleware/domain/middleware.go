@@ -11,8 +11,6 @@ import (
 	"time"
 )
 
-var _ services.Middleware = (*Middleware)(nil)
-
 type Middleware struct {
 	ownPort uint16
 	ownUser entities.User
@@ -32,6 +30,8 @@ type Middleware struct {
 	messageSenderTicker *time.Ticker
 	quit                chan struct{}
 }
+
+var _ services.Middleware = (*Middleware)(nil)
 
 func (m *Middleware) Shutdown() {
 	m.messageSenderTicker.Stop()
