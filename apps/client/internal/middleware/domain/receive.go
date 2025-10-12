@@ -23,7 +23,7 @@ func (m *Middleware) routeIncomingMessages() {
 			continue
 		}
 
-		if pendingMsg.Target.Target == m.ownUser.ID {
+		if pendingMsg.Target.TargetID == m.ownUser.ID {
 			m.handleMessageForSelf(pendingMsg)
 		} else {
 			m.handleMessageForOther(pendingMsg)
@@ -74,7 +74,7 @@ func (m *Middleware) handleMessageForSelf(pendingMsg middleware_entities.Pending
 // It stores the message in the cache for later forwarding.
 func (m *Middleware) handleMessageForOther(pendingMsg middleware_entities.PendingMessage) {
 	if err := m.messageCache.StoreExpiring(pendingMsg, messagecache.DefaultImmunityPeriod); err != nil {
-		log.Printf("failed to store message for other user %s: %v", pendingMsg.Target.Target, err)
+		log.Printf("failed to store message for other user %s: %v", pendingMsg.Target.TargetID, err)
 	}
 	// TODO: Notify ID Manager that we have a pending message for another user.
 }

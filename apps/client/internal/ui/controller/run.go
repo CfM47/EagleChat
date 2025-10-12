@@ -8,8 +8,17 @@ import (
 
 // Run starts the main application event loop.
 func (c *Controller) Run() error {
+	// 0. Start the UI event loop in the background.
+	// This is a blocking call, so it must be in a goroutine.
+	go func() {
+		if err := c.ui.Run(); err != nil {
+			// If the UI crashes, we can log it. This is a simple way to handle it.
+			log.Fatalf("UI exited with error: %v", err)
+		}
+	}()
+
 	// 1. Check for existing user profile on startup.
-	profile, err := c.userRepo.GetOwnProfile()
+	profile, err := c.repository.GetOwnProfile()
 
 	if err != nil {
 		// Assuming any error means no profile exists.

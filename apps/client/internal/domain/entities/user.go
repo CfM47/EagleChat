@@ -1,11 +1,15 @@
 package entities
 
-import "eaglechat/apps/client/internal/utils/simplecrypto/rsa"
+import (
+	"eaglechat/apps/client/internal/utils/simplecrypto/rsa"
+	"time"
+)
 
 type User struct {
 	ID        UserID
 	Name      string
 	PublicKey rsa.PublicKey
+	LastSeen  time.Time
 }
 
 type UserID string
@@ -15,5 +19,6 @@ func NewUser(ID, name string, publicKey rsa.PublicKey) User {
 		ID:        UserID(ID),
 		Name:      name,
 		PublicKey: publicKey,
+		LastSeen:  time.Now().UTC().Round(0),
 	}
 }

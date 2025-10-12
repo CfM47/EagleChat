@@ -69,9 +69,9 @@ func (m *Middleware) getPrioritizedOnlineUsers() ([]middleware_entities.UserData
 	userIDs := make([]entities.UserID, 0)
 	uniqueUserIDs := make(map[entities.UserID]struct{})
 	for _, target := range allCacheTargets {
-		if _, exists := uniqueUserIDs[target.Target]; !exists {
-			userIDs = append(userIDs, target.Target)
-			uniqueUserIDs[target.Target] = struct{}{}
+		if _, exists := uniqueUserIDs[target.TargetID]; !exists {
+			userIDs = append(userIDs, target.TargetID)
+			uniqueUserIDs[target.TargetID] = struct{}{}
 		}
 	}
 
@@ -91,19 +91,19 @@ func (m *Middleware) getPrioritizedOnlineUsers() ([]middleware_entities.UserData
 
 	// Add users from immune targets first
 	for _, target := range cacheTargets.Immune {
-		if userData, isOnline := onlineUsersData[target.Target]; isOnline {
-			if _, alreadyAdded := processedUsers[target.Target]; !alreadyAdded {
+		if userData, isOnline := onlineUsersData[target.TargetID]; isOnline {
+			if _, alreadyAdded := processedUsers[target.TargetID]; !alreadyAdded {
 				usersToProcess = append(usersToProcess, userData)
-				processedUsers[target.Target] = struct{}{}
+				processedUsers[target.TargetID] = struct{}{}
 			}
 		}
 	}
 	// Then add users from non-immune targets
 	for _, target := range cacheTargets.NonImmune {
-		if userData, isOnline := onlineUsersData[target.Target]; isOnline {
-			if _, alreadyAdded := processedUsers[target.Target]; !alreadyAdded {
+		if userData, isOnline := onlineUsersData[target.TargetID]; isOnline {
+			if _, alreadyAdded := processedUsers[target.TargetID]; !alreadyAdded {
 				usersToProcess = append(usersToProcess, userData)
-				processedUsers[target.Target] = struct{}{}
+				processedUsers[target.TargetID] = struct{}{}
 			}
 		}
 	}
@@ -127,10 +127,10 @@ func (m *Middleware) sendAllMessagesToUser(wg *sync.WaitGroup, userData middlewa
 	for _, msg := range pendingMessages {
 		err := m.p2pConnPool.Message(userData.IP.String(), fmt.Sprint(m.ownPort), msg.Content)
 		if err == nil {
-			log.Printf("successfully sent message %s to user %s", msg.Target.ID, msg.Target.Target)
+			log.Printf("successfully sent message %s to user %s", msg.Target.ID, msg.Target.TargetID)
 			successfullySent = append(successfullySent, msg.Target)
 		} else {
-			log.Printf("failed to send message %s to user %s: %s", msg.Target.ID, msg.Target.Target, err)
+			log.Printf("failed to send message %s to user %s: %s", msg.Target.ID, msg.Target.TargetID, err)
 		}
 	}
 

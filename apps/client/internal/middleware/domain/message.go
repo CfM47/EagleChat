@@ -10,8 +10,6 @@ import (
 	"time"
 
 	middleware_entities "eaglechat/apps/client/internal/middleware/domain/entities"
-
-	"github.com/google/uuid"
 )
 
 const (
@@ -59,7 +57,7 @@ func (m *Middleware) composeP2PMessage(target entities.User, message entities.Me
 	}
 
 	// 3. Create the P2P wire message (PendingMessage).
-	msgTarget := middleware_entities.NewMessageTarget(uuid.New().String(), target.ID)
+	msgTarget := middleware_entities.NewMessageTarget(message.ID, target.ID)
 	pendingMsg := middleware_entities.NewPendingMessage(msgTarget, envelopeBytes)
 	pendingMsgBytes, err := json.Marshal(pendingMsg)
 	if err != nil {

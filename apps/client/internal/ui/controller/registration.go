@@ -35,7 +35,7 @@ func (c *Controller) handleRegistration(name string) {
 		User:       user,
 		PrivateKey: *privKey,
 	}
-	if err := c.userRepo.SaveOwnProfile(profile); err != nil {
+	if err := c.repository.SaveOwnProfile(profile); err != nil {
 		log.Fatalf("Failed to save profile: %v", err)
 		return
 	}

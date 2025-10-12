@@ -14,7 +14,7 @@ func (c *Controller) handleSwitchChat(chatID string) {
 	c.activeChatID = chatID
 
 	// Reset the unread count for the newly active chat.
-	if err := c.messageRepo.ResetUnreadCount(entities.UserID(chatID)); err != nil {
+	if err := c.repository.ResetUnreadCount(entities.UserID(chatID)); err != nil {
 		log.Printf("Failed to reset unread count for chat %s: %v", chatID, err)
 	}
 
