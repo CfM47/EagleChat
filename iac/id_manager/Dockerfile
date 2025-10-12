@@ -29,5 +29,9 @@ FROM alpine:latest
 
 COPY --from=builder /id_manager /id_manager
 
+# Create the /env/ directory and copy the .env file
+RUN mkdir /env/
+COPY iac/.env /env/
+
 EXPOSE 8080
 CMD ["/id_manager"]

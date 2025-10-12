@@ -1,15 +1,19 @@
-version: '3.8'
+version: "3.8"
 
 services:
   id_manager:
-    build:
-      context: ..
-      dockerfile: iac/id_manager/Dockerfile
+    image: eaglechat-id_manager:latest
     ports:
-      # Expose port 8080 on the swarm's routing mesh to the host
-      - "8080:8080"
+      - target: ${ID_MANAGER_PORT:-8080}
+        published: ${ID_MANAGER_PORT:-8080}
+        protocol: tcp
+        mode: ingress
+    environment:
+      - ID_MANAGER_IP=${ID_MANAGER_IP:-172.28.1.1}
+      - ID_MANAGER_PORT=${ID_MANAGER_PORT:-8080}
     networks:
-      - eaglechat_net
+      eaglechat_net:
+        ipv4_address: ${ID_MANAGER_IP:-172.28.1.1}
     volumes:
       # Persist the user data using a named volume
       - id_manager_data:/data
@@ -23,14 +27,15 @@ services:
           - node.role == manager
 
   client:
-    build:
-      context: ..
-      dockerfile: iac/client/Dockerfile
+    image: eaglechat-client:latest
     networks:
       - eaglechat_net
     depends_on:
       - id_manager
-    command: ["/client", "id_manager", "8080"]
+    environment:
+      - ID_MANAGER_IP=${ID_MANAGER_IP:-172.28.1.1}
+      - ID_MANAGER_PORT=${ID_MANAGER_PORT:-8080}
+    command: ["/client"]
     stdin_open: true
     tty: true
     deploy:
@@ -44,6 +49,9 @@ networks:
   eaglechat_net:
     # Use the overlay driver for multi-host swarm networking
     driver: overlay
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
 
 volumes:
   id_manager_data:

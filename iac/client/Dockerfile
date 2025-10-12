@@ -28,4 +28,8 @@ FROM alpine:latest
 
 COPY --from=builder /client /client
 
+# Create the /env/ directory and copy the .env file
+RUN mkdir /env/
+COPY iac/.env /env/
+
 CMD ["/client"]
