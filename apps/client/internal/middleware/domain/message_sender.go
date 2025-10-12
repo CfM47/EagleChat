@@ -1,7 +1,9 @@
 package middleware
 
 import (
+	"context"
 	"eaglechat/apps/client/internal/domain/entities"
+	"eaglechat/common/ezlog"
 	"fmt"
 	"log"
 	"sync"
@@ -15,9 +17,11 @@ const (
 	maxUsersPerTick       = 10
 )
 
-func (m *Middleware) messageSender() {
-	log.Println("starting message sender...")
-	defer log.Println("stopped message sender.")
+func (m *Middleware) messageSender(ctx context.Context) {
+	ctx = ezlog.WithComponentPrefix(ctx, "message-sender")
+	ezlog.Log(ctx).Info("Starting message sender...")
+
+	defer ezlog.Log(ctx).Info("Stopped message sender.")
 
 	for {
 		select {
@@ -126,10 +130,10 @@ func (m *Middleware) sendAllMessagesToUser(wg *sync.WaitGroup, userData middlewa
 	for _, msg := range pendingMessages {
 		err := m.p2pConnPool.Message(userData.IP.String(), fmt.Sprint(m.ownPort), msg.Content)
 		if err == nil {
-			log.Printf("successfully sent message %s to user %s", msg.Target.ID, msg.Target.TargetID)
+			log.Printf("successfully sent message %s to user %s", msg.Target.MessageID, msg.Target.TargetID)
 			successfullySent = append(successfullySent, msg.Target)
 		} else {
-			log.Printf("failed to send message %s to user %s: %s", msg.Target.ID, msg.Target.TargetID, err)
+			log.Printf("failed to send message %s to user %s: %s", msg.Target.MessageID, msg.Target.TargetID, err)
 		}
 	}
 

@@ -137,3 +137,11 @@ func (l *zerologAdapter) Error(msg string) {
 func (l *zerologAdapter) Errorf(format string, v ...any) {
 	l.zlog.Error().Msgf(format, v...)
 }
+
+func (l *zerologAdapter) Fatal(msg string) {
+	l.zlog.Fatal().Msg(msg)
+}
+
+func (l *zerologAdapter) Fatalf(format string, v ...any) {
+	l.zlog.Fatal().Msgf(format, v...)
+}

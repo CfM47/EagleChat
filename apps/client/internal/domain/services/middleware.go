@@ -13,7 +13,7 @@ type Middleware interface {
 }
 
 type Connector interface {
-	Connect(listenPort uint16, userID entities.User, sk rsa.PrivateKey) (Middleware, <-chan entities.Message, error)
+	Connect(ctx context.Context, listenPort uint16, userID entities.User, sk rsa.PrivateKey) (Middleware, <-chan entities.Message, error)
 }
 
 type Registerer interface {
