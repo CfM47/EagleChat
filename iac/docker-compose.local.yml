@@ -3,26 +3,45 @@ version: '3.8'
 services:
   id_manager:
     image: eaglechat-id_manager:latest
-    ports:
-      - "8080:8080"
+    hostname: id_manager
     networks:
-      - eaglechat_net
+      macvlan_net:
+        ipv4_address: ${ID_MANAGER_IP}
     volumes:
       - id_manager_data:/data
 
-  client:
+  client1:
     image: eaglechat-client:latest
-    networks:
-      - eaglechat_net
+    hostname: client1
     depends_on:
       - id_manager
-    command: ["/client", "id_manager", "8080"]
+    command: ["/client"]
+    networks:
+      macvlan_net:
+        ipv4_address: ${CLIENT1_IP}
     stdin_open: true
     tty: true
+    volumes:
+      - ./logs/client1:/data/log
+
+  client2:
+    image: eaglechat-client:latest
+    hostname: client2
+    depends_on:
+      - id_manager
+    command: ["/client"]
+    networks:
+      macvlan_net:
+        ipv4_address: ${CLIENT2_IP}
+    stdin_open: true
+    tty: true
+    volumes:
+      - ./logs/client2:/data/log
 
 networks:
-  eaglechat_net:
-    driver: overlay
+  macvlan_net:
+    external: true
+    name: eaglechat_net
 
 volumes:
   id_manager_data:
