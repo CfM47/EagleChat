@@ -15,8 +15,14 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	os.WriteFile("public_key.pem", pkBytes, 0644)
+	err = os.WriteFile("public_key.pem", pkBytes, 0644)
+	if err != nil {
+		panic(err)
+	}
 
 	skBytes := sk.ToBytes()
-	os.WriteFile("private_key.pem", skBytes, 0600)
+	err = os.WriteFile("private_key.pem", skBytes, 0600)
+	if err != nil {
+		panic(err)
+	}
 }
