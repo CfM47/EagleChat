@@ -8,6 +8,9 @@ services:
         published: ${ID_MANAGER_PORT:-8080}
         protocol: tcp
         mode: ingress
+    environment:
+      - ID_MANAGER_IP=${ID_MANAGER_IP:-172.28.1.1}
+      - ID_MANAGER_PORT=${ID_MANAGER_PORT:-8080}
     networks:
       eaglechat_local_net:
         ipv4_address: ${ID_MANAGER_IP:-172.28.1.1}
@@ -20,6 +23,9 @@ services:
       - eaglechat_local_net
     depends_on:
       - id_manager
+    environment:
+      - ID_MANAGER_IP=${ID_MANAGER_IP:-172.28.1.1}
+      - ID_MANAGER_PORT=${ID_MANAGER_PORT:-8080}
     command: ["/client"]
     stdin_open: true
     tty: true
