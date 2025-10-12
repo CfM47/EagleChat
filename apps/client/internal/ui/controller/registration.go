@@ -3,13 +3,16 @@ package controller
 import (
 	"eaglechat/apps/client/internal/domain/entities"
 	"eaglechat/apps/client/internal/ui/models"
+	"eaglechat/common/ezlog"
 	"eaglechat/common/simplecrypto/rsa"
 	"fmt"
 	"log"
 )
 
 func (c *Controller) handleRegistration(name string) {
-	log.Printf("Attempting to register user with name: %s", name)
+	ctx := ezlog.NewLoggerContext("registration")
+
+	ezlog.Log(ctx).Infof("Attempting to register user with name: %s", name)
 
 	// 1. Generate key pair
 	privKey, _, err := rsa.GenerateKeyPair()
@@ -22,10 +25,10 @@ func (c *Controller) handleRegistration(name string) {
 	}
 
 	// 2. Call the registerer to get a user ID from the ID Manager
-	user, err := c.registerer.Register(name, *privKey)
+	user, err := c.registerer.Register(ctx, name, *privKey)
 	if err != nil {
 		msg := fmt.Sprintf("Failed to register with ID manager: %v", err)
-		log.Print(msg)
+		ezlog.Log(ctx).Error(msg)
 		c.setError(msg)
 		return
 	}
@@ -36,11 +39,11 @@ func (c *Controller) handleRegistration(name string) {
 		PrivateKey: *privKey,
 	}
 	if err := c.repository.SaveOwnProfile(profile); err != nil {
-		log.Fatalf("Failed to save profile: %v", err)
+		ezlog.Log(ctx).Errorf("Failed to save profile: %v", err)
 		return
 	}
 
-	log.Println("Registration successful. Connecting to middleware...")
+	ezlog.Log(ctx).Info("Registration successful. Connecting to middleware...")
 
 	// 4. Connect to the middleware and transition to chat state
 	c.appState = models.ChatState

@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"eaglechat/apps/client/internal/domain/entities"
 	"eaglechat/common/simplecrypto/rsa"
 )
@@ -16,5 +17,5 @@ type Connector interface {
 }
 
 type Registerer interface {
-	Register(username string, sk rsa.PrivateKey) (entities.User, error)
+	Register(ctx context.Context, username string, sk rsa.PrivateKey) (entities.User, error)
 }

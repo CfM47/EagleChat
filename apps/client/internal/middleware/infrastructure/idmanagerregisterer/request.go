@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"context"
 	"eaglechat/apps/client/internal/domain/entities"
+	"eaglechat/common/ezlog"
 	"eaglechat/common/simplecrypto/rsa"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 )
@@ -21,6 +23,8 @@ type responseBody struct {
 
 // performHTTPRequest sends the final HTTP registration request.
 func (r *registererImpl) performHTTPRequest(ctx context.Context, username string, pk *rsa.PublicKey, idManagerIP string) (entities.User, error) {
+	ezlog.Log(ctx).Infof("Performing HTTP registration request to ID Manager at %s:%s", idManagerIP, r.idManagerPort)
+
 	url := fmt.Sprintf("http://%s:%s/users/register", idManagerIP, r.idManagerPort)
 
 	pubKeyBytes, err := pk.ToBytes()
@@ -35,30 +39,42 @@ func (r *registererImpl) performHTTPRequest(ctx context.Context, username string
 
 	bodyBytes, err := json.Marshal(reqBody)
 	if err != nil {
-		return entities.User{}, fmt.Errorf("failed to marshal request body: %w", err)
+		msg := fmt.Sprintf("failed to marshal request body: %v", err)
+		ezlog.Log(ctx).Error(msg)
+		return entities.User{}, errors.New(msg)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(bodyBytes))
 	if err != nil {
-		return entities.User{}, fmt.Errorf("failed to create http request: %w", err)
+		msg := fmt.Sprintf("failed to create HTTP request: %v", err)
+		ezlog.Log(ctx).Error(msg)
+		return entities.User{}, errors.New(msg)
 	}
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return entities.User{}, fmt.Errorf("http request to %s failed: %w", url, err)
+		msg := fmt.Sprintf("HTTP request to %s failed: %v", url, err)
+		ezlog.Log(ctx).Error(msg)
+		return entities.User{}, errors.New(msg)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return entities.User{}, fmt.Errorf("registration failed with status: %s", resp.Status)
+		msg := fmt.Sprintf("ID Manager responded with status: %s", resp.Status)
+		ezlog.Log(ctx).Error(msg)
+		return entities.User{}, errors.New(msg)
 	}
 
 	var res responseBody
 	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
-		return entities.User{}, fmt.Errorf("failed to decode response body: %w", err)
+		msg := fmt.Sprintf("failed to decode response body: %v", err)
+		ezlog.Log(ctx).Error(msg)
+		return entities.User{}, errors.New(msg)
 	}
+
+	ezlog.Log(ctx).Infof("Successfully registered with ID Manager. Received user ID: %s", res.ID)
 
 	return entities.NewUser(res.ID, username, *pk), nil
 }
