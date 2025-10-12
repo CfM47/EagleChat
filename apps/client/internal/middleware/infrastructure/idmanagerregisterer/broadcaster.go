@@ -21,6 +21,8 @@ func (r *registererImpl) broadcastLoop(ctx context.Context, multicastNet multica
 		select {
 		case <-ctx.Done():
 			return
+		case <-r.foundIDManager:
+			return
 		case <-ticker.C:
 			ezlog.Log(ctx).Debug("broadcasting REGISTER announcement")
 			if err := multicastNet.Broadcast(registerMsg); err != nil {

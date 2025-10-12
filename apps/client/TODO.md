@@ -3,6 +3,7 @@
 - add get random user endpoint service for the id manager conn
 - make id manager user query loop be in parallel
 - make broadcast address an environment variable
+- allow retries in the registerer
 
 ## DONE
 
