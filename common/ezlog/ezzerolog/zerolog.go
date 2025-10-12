@@ -144,6 +144,4 @@ func (l *zerologAdapter) Fatal(msg string) {
 
 func (l *zerologAdapter) Fatalf(format string, v ...any) {
 	l.zlog.Fatal().Msgf(format, v...)
-	err := fmt.Errorf(format, v...)
-	panic(err)
 }

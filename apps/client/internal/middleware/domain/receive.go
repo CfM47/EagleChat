@@ -28,7 +28,7 @@ func (m *Middleware) routeIncomingMessages(ctx context.Context) {
 		if pendingMsg.Target.TargetID == m.ownUser.ID {
 			ezlog.Log(ctx).Infof("Received message for self: %s", pendingMsg.Target.MessageID)
 
-			messageCtx := ezlog.NewLoggerContext("message-for-self-hadler")
+			messageCtx := ezlog.NewLoggerContext("message-for-self-handler")
 			m.handleMessageForSelf(messageCtx, pendingMsg)
 		} else {
 			ezlog.Log(ctx).Infof("Received message for other user %s: %s", pendingMsg.Target.TargetID, pendingMsg.Target.MessageID)
