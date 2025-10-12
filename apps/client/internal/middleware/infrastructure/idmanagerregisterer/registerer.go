@@ -4,10 +4,10 @@ import (
 	"context"
 	"eaglechat/apps/client/internal/domain/entities"
 	"eaglechat/apps/client/internal/domain/services"
+	"eaglechat/common/ezlog"
 	"eaglechat/common/multicast/implementation"
 	"eaglechat/common/simplecrypto/rsa"
 	"fmt"
-	"log"
 	"time"
 
 	multicast "eaglechat/common/multicast/interface"
@@ -30,8 +30,11 @@ func NewRegisterer(multicastAddress, idManagerPort string, timeout time.Duration
 }
 
 // Register orchestrates the discovery and HTTP registration process.
-func (r *registererImpl) Register(username string, sk rsa.PrivateKey) (entities.User, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), r.registrationTimeout)
+func (r *registererImpl) Register(ctx context.Context, username string, sk rsa.PrivateKey) (entities.User, error) {
+	ctx, cancel := context.WithTimeout(ctx, r.registrationTimeout)
+	ctx = ezlog.WithComponentPrefix(ctx, "Registerer")
+	ezlog.Log(ctx).Info("beginning registration process")
+
 	defer cancel()
 
 	multicastNet, err := implementation.New(r.multicastAddress)
@@ -54,7 +57,7 @@ func (r *registererImpl) Register(username string, sk rsa.PrivateKey) (entities.
 	case err := <-errChan:
 		return entities.User{}, err
 	case idManager := <-idManagerChan:
-		log.Printf("Discovered ID Manager %s at %s", idManager.ID, idManager.IP)
+		ezlog.Log(ctx).Infof("Discovered ID Manager %s at %s", idManager.ID, idManager.IP)
 		return r.performHTTPRequest(ctx, username, sk.PublicKey(), idManager.IP)
 	}
 }
