@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  id_manager:
+    build:
+      context: ..
+      dockerfile: iac/id_manager/Dockerfile
+    ports:
+      # Expose port 8080 on the swarm's routing mesh to the host
+      - "8080:8080"
+    networks:
+      - eaglechat_net
+    volumes:
+      # Persist the user data using a named volume
+      - id_manager_data:/data
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          # Pin this service to a manager node to ensure it always uses
+          # the same data volume. For a real HA setup, this would
+          # require a distributed storage solution.
+          - node.role == manager
+
+  client:
+    build:
+      context: ..
+      dockerfile: iac/client/Dockerfile
+    networks:
+      - eaglechat_net
+    depends_on:
+      - id_manager
+    command: ["/client", "id_manager", "8080"]
+    stdin_open: true
+    tty: true
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          # Run the client on a worker node
+          - node.role == worker
+
+networks:
+  eaglechat_net:
+    # Use the overlay driver for multi-host swarm networking
+    driver: overlay
+
+volumes:
+  id_manager_data:
+    # Define the named volume for the id_manager data
