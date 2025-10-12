@@ -12,29 +12,35 @@ import (
 	messagecache "eaglechat/apps/client/internal/middleware/domain/repositories/messagecache"
 )
 
-// routeIncomingMessages is a background goroutine that processes all messages
+// messageReceiver is a background goroutine that processes all messages
 // received from the P2P connection pool.
-func (m *Middleware) routeIncomingMessages(ctx context.Context) {
+func (m *Middleware) messageReceiver(ctx context.Context) {
 	ezlog.Log(ctx).Info("Starting incoming message router...")
 	defer ezlog.Log(ctx).Info("Stopped incoming message router.")
 
-	for rawMsg := range m.p2pConnPool.Receive() {
-		var pendingMsg middleware_entities.PendingMessage
-		if err := json.Unmarshal(rawMsg, &pendingMsg); err != nil {
-			ezlog.Log(ctx).Errorf("Failed to unmarshal incoming message: %v", err)
-			continue
-		}
+	for {
+		select {
+		case <-m.Done():
+			return
 
-		if pendingMsg.Target.TargetID == m.ownUser.ID {
-			ezlog.Log(ctx).Infof("Received message for self: %s", pendingMsg.Target.MessageID)
+		case rawMsg := <-m.p2pConnPool.Receive():
+			var pendingMsg middleware_entities.PendingMessage
+			if err := json.Unmarshal(rawMsg, &pendingMsg); err != nil {
+				ezlog.Log(ctx).Errorf("Failed to unmarshal incoming message: %v", err)
+				continue
+			}
 
-			messageCtx := ezlog.NewLoggerContext("message-for-self-handler")
-			m.handleMessageForSelf(messageCtx, pendingMsg)
-		} else {
-			ezlog.Log(ctx).Infof("Received message for other user %s: %s", pendingMsg.Target.TargetID, pendingMsg.Target.MessageID)
+			if pendingMsg.Target.TargetID == m.ownUser.ID {
+				ezlog.Log(ctx).Infof("Received message for self: %s", pendingMsg.Target.MessageID)
 
-			messageCtx := ezlog.NewLoggerContext("message-for-other-handler")
-			m.handleMessageForOther(messageCtx, pendingMsg)
+				messageCtx := ezlog.NewLoggerContext("message-for-self-handler")
+				m.handleMessageForSelf(messageCtx, pendingMsg)
+			} else {
+				ezlog.Log(ctx).Infof("Received message for other user %s: %s", pendingMsg.Target.TargetID, pendingMsg.Target.MessageID)
+
+				messageCtx := ezlog.NewLoggerContext("message-for-other-handler")
+				m.handleMessageForOther(messageCtx, pendingMsg)
+			}
 		}
 	}
 }
@@ -84,5 +90,4 @@ func (m *Middleware) handleMessageForOther(ctx context.Context, pendingMsg middl
 	if err := m.messageCache.StoreExpiring(pendingMsg, messagecache.DefaultImmunityPeriod); err != nil {
 		ezlog.Log(ctx).Errorf("Failed to store message for other user %s: %v", pendingMsg.Target.TargetID, err)
 	}
-	// TODO: Notify ID Manager that we have a pending message for another user.
 }

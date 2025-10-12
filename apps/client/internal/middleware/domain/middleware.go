@@ -28,6 +28,7 @@ type Middleware struct {
 	sk rsa.PrivateKey
 
 	messageSenderTicker *time.Ticker
+	announcementTicker  *time.Ticker
 	quit                chan struct{}
 }
 
@@ -36,4 +37,8 @@ var _ services.Middleware = (*Middleware)(nil)
 func (m *Middleware) Shutdown() {
 	m.messageSenderTicker.Stop()
 	close(m.quit)
+}
+
+func (m *Middleware) Done() <-chan struct{} {
+	return m.quit
 }

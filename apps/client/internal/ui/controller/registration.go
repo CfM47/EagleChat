@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"context"
 	"eaglechat/apps/client/internal/domain/entities"
 	"eaglechat/apps/client/internal/ui/models"
 	"eaglechat/common/ezlog"
@@ -9,9 +10,7 @@ import (
 	"log"
 )
 
-func (c *Controller) handleRegistration(name string) {
-	ctx := ezlog.NewLoggerContext("registration")
-
+func (c *Controller) handleRegistration(ctx context.Context, name string) {
 	ezlog.Log(ctx).Infof("Attempting to register user with name: %s", name)
 
 	// 1. Generate key pair
@@ -47,6 +46,6 @@ func (c *Controller) handleRegistration(name string) {
 
 	// 4. Connect to the middleware and transition to chat state
 	c.appState = models.ChatState
-	c.connectToMiddleware(profile)
+	c.connectToMiddleware(ctx, profile)
 	c.render()
 }

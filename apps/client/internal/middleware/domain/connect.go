@@ -56,6 +56,7 @@ func NewConnector(
 
 func (c Connector) Connect(ctx context.Context, listenPort uint16, user entities.User, sk rsa.PrivateKey) (services.Middleware, <-chan entities.Message, error) {
 	ezlog.Log(ctx).Infof("Connecting as user %s on port %d", user.Name, listenPort)
+	defer ezlog.Log(ctx).Info("Connector finished")
 
 	ezlog.Log(ctx).Info("Building ID Manager Pool")
 	iDManagerPool, err := c.iDManagerPoolBuilder(sk, c.idManagerConnectionBuilder, user.ID)
@@ -86,19 +87,23 @@ func (c Connector) Connect(ctx context.Context, listenPort uint16, user entities
 
 		receivedMessages: (chan<- entities.Message)(messageChannel),
 
-		quit:                make(chan struct{}),
+		quit: make(chan struct{}),
+
 		messageSenderTicker: time.NewTicker(messageSenderInterval),
+		announcementTicker:  time.NewTicker(presenceAnnouncerInterval),
 	}
 
 	ezlog.Log(ctx).Info("Starting P2P listener...")
-
-	receiverCtx := ezlog.NewLoggerContext("incoming-message-router")
-	go m.routeIncomingMessages(receiverCtx)
+	receiverCtx := ezlog.NewLoggerContext("message-receiver")
+	go m.messageReceiver(receiverCtx)
 
 	ezlog.Log(ctx).Info("Starting message sender...")
-
 	senderCtx := ezlog.NewLoggerContext("message-sender")
 	go m.messageSender(senderCtx)
+
+	ezlog.Log(ctx).Info("Starting presence announcer...")
+	announcerCtx := ezlog.NewLoggerContext("presence-announcer")
+	go m.presenceAnnouncer(announcerCtx)
 
 	return &m, (<-chan entities.Message)(messageChannel), nil
 }

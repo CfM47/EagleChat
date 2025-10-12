@@ -1,11 +1,12 @@
 package middleware
 
 import (
+	"context"
 	"eaglechat/apps/client/internal/domain/entities"
+	"eaglechat/common/ezlog"
 	"eaglechat/common/simplecrypto"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net"
 	"time"
 
@@ -18,19 +19,22 @@ const (
 )
 
 // Message is the high-level orchestrator for sending a message.
-func (m *Middleware) Message(target entities.User, message entities.Message) error {
+func (m *Middleware) Message(ctx context.Context, target entities.User, message entities.Message) error {
 	pendingMsg, msgBytes, err := m.composeP2PMessage(target, message)
 	if err != nil {
+		ezlog.Log(ctx).Errorf("Failed to compose P2P message: %v", err)
 		return fmt.Errorf("failed to compose message: %w", err)
 	}
 
 	ip, err := m.getUserIfConnected(target.ID)
 	if err != nil {
+		ezlog.Log(ctx).Warnf("User %s not connected, storing message as pending: %v", target.ID, err)
 		return m.storeAsPending(pendingMsg)
 	}
 
 	if err := m.sendP2PMessage(ip, msgBytes); err != nil {
-		log.Printf("failed to send message to %s, storing as pending: %v", target.ID, err)
+		ezlog.Log(ctx).Warnf("Failed to send message to %s, storing as pending: %v", target.ID, err)
+		return m.storeAsPending(pendingMsg)
 	}
 
 	return nil
