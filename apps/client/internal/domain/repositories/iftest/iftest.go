@@ -25,13 +25,4 @@ func RunClientRepositoryTests(t *testing.T, factory RepoFactory) {
 		t.Run("Chats", func(t *testing.T) {
 		runChatTests(t, factory)
 	})
-	// t.Run("Users", func(t *testing.T) {
-	// 	runUserTests(t, factory)
-	// })
-	// t.Run("Messages", func(t *testing.T) {
-	// 	runMessageTests(t, factory)
-	// })
-	// t.Run("Chats", func(t *testing.T) {
-	// 	runChatTests(t, factory)
-	// })
 }
