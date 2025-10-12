@@ -13,19 +13,18 @@ import (
 )
 
 const (
-	messageSenderInterval = 5 * time.Second
-	maxUsersPerTick       = 10
+	messageSenderInterval           = 10 * time.Second
+	maxUsersToSendMessagesToPerTick = 10
 )
 
 func (m *Middleware) messageSender(ctx context.Context) {
-	ctx = ezlog.WithComponentPrefix(ctx, "message-sender")
 	ezlog.Log(ctx).Info("Starting message sender...")
 
 	defer ezlog.Log(ctx).Info("Stopped message sender.")
 
 	for {
 		select {
-		case <-m.quit:
+		case <-m.Done():
 			return
 		case <-m.messageSenderTicker.C:
 			m.trySendPendingMessages()
@@ -44,7 +43,7 @@ func (m *Middleware) trySendPendingMessages() {
 	}
 
 	// Limit the number of users to process in this tick
-	limit := min(len(usersToProcess), maxUsersPerTick)
+	limit := min(len(usersToProcess), maxUsersToSendMessagesToPerTick)
 
 	log.Printf("found %d online users with pending messages. processing %d this tick.", len(usersToProcess), limit)
 

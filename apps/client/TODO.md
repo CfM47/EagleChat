@@ -1,7 +1,5 @@
 # TODO
 
-- add id manager pending messages notifier loop (remove ad-hoc notification
-when message fails)
 - add get random user endpoint service for the id manager conn
 - make id manager user query loop be in parallel
 - make broadcast address an environment variable
@@ -19,6 +17,9 @@ middleware
 - add pending message sender loop
   - it should prioritize own (immune) messages, the message cache
   interface should allow for querying them
+
+- add id manager pending messages notifier loop (remove ad-hoc notification
+when message fails)
 
 ## CANCELLED
 

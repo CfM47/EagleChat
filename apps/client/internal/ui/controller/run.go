@@ -1,33 +1,37 @@
 package controller
 
 import (
+	"context"
 	"eaglechat/apps/client/internal/ui"
 	"eaglechat/apps/client/internal/ui/models"
+	"eaglechat/common/ezlog"
 	"log"
 )
 
 // Run starts the main application event loop.
 func (c *Controller) Run() error {
-	// 0. Start the UI event loop in the background.
-	// This is a blocking call, so it must be in a goroutine.
+	ctx := ezlog.NewLoggerContext("controller")
+
 	go func() {
 		if err := c.ui.Run(); err != nil {
-			// If the UI crashes, we can log it. This is a simple way to handle it.
-			log.Fatalf("UI exited with error: %v", err)
+			ezlog.Log(ctx).Fatalf("UI exited with error: %v", err)
 		}
 	}()
 
-	// 1. Check for existing user profile on startup.
+	ezlog.Log(ctx).Info("UI started")
+
+	ezlog.Log(ctx).Info("Checking for existing profile...")
 	profile, err := c.repository.GetOwnProfile()
 
 	if err != nil {
-		// Assuming any error means no profile exists.
-		log.Println("No profile found, entering registration.")
+		ezlog.Log(ctx).Info("No profile found, entering registration.")
 		c.appState = models.RegisterState
 	} else {
-		log.Println("Profile found, connecting...")
+		ezlog.Log(ctx).Info("Profile found, connecting...")
 		c.appState = models.ChatState
-		c.connectToMiddleware(profile)
+
+		connectorCtx := ezlog.WithComponentPrefix(ctx, "middleware-connector")
+		c.connectToMiddleware(connectorCtx, profile)
 	}
 
 	// 2. Perform initial render.
@@ -38,27 +42,31 @@ func (c *Controller) Run() error {
 	for {
 		select {
 		case action := <-c.ui.UserActions():
-			c.handleUIAction(action)
+			c.handleUIAction(ctx, action)
 		case msg := <-c.messageChannel:
-			c.handleIncomingMessage(msg)
+			messageCtx := ezlog.WithComponentPrefix(ctx, "incoming-message")
+			c.handleIncomingMessage(messageCtx, msg)
 		}
 	}
 }
 
 // handleUIAction dispatches actions from the UI to the appropriate handler.
-func (c *Controller) handleUIAction(action ui.UserAction) {
+func (c *Controller) handleUIAction(ctx context.Context, action ui.UserAction) {
 	switch act := action.(type) {
 	case ui.SubmitRegistrationAction:
 		if c.appState == models.RegisterState {
-			c.handleRegistration(act.Name)
+			ctx = ezlog.WithComponentPrefix(ctx, "registration")
+			c.handleRegistration(ctx, act.Name)
 		}
 	case ui.SwitchChatAction:
 		if c.appState == models.ChatState {
-			c.handleSwitchChat(act.ChatID)
+			ctx = ezlog.WithComponentPrefix(ctx, "switch-chat")
+			c.handleSwitchChat(ctx, act.ChatID)
 		}
 	case ui.SendMessageAction:
 		if c.appState == models.ChatState {
-			c.handleSendMessage(act.Content)
+			ctx = ezlog.WithComponentPrefix(ctx, "send-message")
+			c.handleSendMessage(ctx, act.Content)
 		}
 	}
 }
