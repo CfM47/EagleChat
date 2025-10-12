@@ -14,8 +14,6 @@ import (
 // routeIncomingMessages is a background goroutine that processes all messages
 // received from the P2P connection pool.
 func (m *Middleware) routeIncomingMessages() {
-	log.SetPrefix("[RouteIncomingMessages] ")
-
 	for rawMsg := range m.p2pConnPool.Receive() {
 		var pendingMsg middleware_entities.PendingMessage
 		if err := json.Unmarshal(rawMsg, &pendingMsg); err != nil {

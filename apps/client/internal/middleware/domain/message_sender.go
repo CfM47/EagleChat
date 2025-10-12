@@ -16,9 +16,8 @@ const (
 )
 
 func (m *Middleware) messageSender() {
-	log.SetPrefix("[Message Sender] ")
-	log.Println("starting...")
-	defer log.Println("stopped.")
+	log.Println("starting message sender...")
+	defer log.Println("stopped message sender.")
 
 	for {
 		select {

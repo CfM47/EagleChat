@@ -10,8 +10,6 @@ import (
 
 // QueryUser implements domain.Middleware.
 func (m *Middleware) QueryUser(userID entities.UserID) (entities.User, error) {
-	log.SetPrefix("[QueryUser] ")
-
 	users, err := m.getUserData([]entities.UserID{userID}, false)
 	if err != nil {
 		return entities.User{}, err
