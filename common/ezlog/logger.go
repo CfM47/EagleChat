@@ -2,6 +2,7 @@ package ezlog
 
 import (
 	"context"
+	"fmt"
 	"log"
 )
 
@@ -25,6 +26,10 @@ type Logger interface {
 	Error(msg string)
 	// Errorf logs a formatted error message.
 	Errorf(format string, v ...any)
+	// Fatal logs a fatal error message and exits the application.
+	Fatal(msg string)
+	// Fatalf logs a formatted fatal error message and exits the application.
+	Fatalf(format string, v ...any)
 }
 
 // Factory defines the interface for creating Logger instances.
@@ -103,6 +108,14 @@ func (n *nopLogger) Warn(msg string)                {}
 func (n *nopLogger) Warnf(format string, v ...any)  {}
 func (n *nopLogger) Error(msg string)               {}
 func (n *nopLogger) Errorf(format string, v ...any) {}
+func (n *nopLogger) Fatal(msg string) {
+	panic(msg)
+}
+
+func (n *nopLogger) Fatalf(format string, v ...any) {
+	err := fmt.Errorf(format, v...)
+	panic(err)
+}
 
 // nop is a single, shared instance of the no-op logger.
 var nop = &nopLogger{}
