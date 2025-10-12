@@ -1,17 +1,21 @@
 package idmanagerpool
 
 import (
+	"context"
 	"eaglechat/apps/client/internal/domain/entities"
 	middleware_entities "eaglechat/apps/client/internal/middleware/domain/entities"
 	"eaglechat/apps/client/internal/middleware/domain/services"
 	"eaglechat/apps/client/internal/middleware/infrastructure/idmanagerpool/repositories"
+	"eaglechat/common/ezlog"
 	"eaglechat/common/multicast/implementation"
 	multicast "eaglechat/common/multicast/interface"
 	"eaglechat/common/simplecrypto/rsa"
+	"errors"
 	"fmt"
 	"log"
 	"math/rand"
 	"net"
+	"os"
 	"strconv"
 	"time"
 )
@@ -22,16 +26,19 @@ const (
 )
 
 type idManagerPoolImpl struct {
-	repository        repositories.IDManagerRepository
-	privateKey        rsa.PrivateKey
-	connectionBuilder middleware_entities.IDManagerConnBuilder
-	ownID             entities.UserID
-	multicastNet      multicast.MulticastNetwork
+	repository         repositories.IDManagerRepository
+	privateKey         rsa.PrivateKey
+	connectionBuilder  middleware_entities.IDManagerConnBuilder
+	ownID              entities.UserID
+	multicastNet       multicast.MulticastNetwork
+	defaultManagerData *middleware_entities.IDManagerData
 }
 
 // BuildIDManagerPool creates a new IDManagerPool, initializes the repository, and starts
 // processing multicast announcements.
 func BuildIDManagerPool(privateKey rsa.PrivateKey, connectionBuilder middleware_entities.IDManagerConnBuilder, ownID entities.UserID) (services.IDManagerPool, error) {
+	ctx := ezlog.NewLoggerContext("id-manager-pool-build")
+
 	multicastNet, err := implementation.New(MulticastAddress)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize multicast network: %w", err)
@@ -45,6 +52,13 @@ func BuildIDManagerPool(privateKey rsa.PrivateKey, connectionBuilder middleware_
 		connectionBuilder: connectionBuilder,
 		ownID:             ownID,
 		multicastNet:      multicastNet,
+	}
+
+	data, err := getDefaultIDManagerData()
+	if err != nil {
+		ezlog.Log(ctx).Warnf("No default ID manager configured: %v", err)
+	} else {
+		pool.defaultManagerData = &data
 	}
 
 	go pool.processAnnouncements()
@@ -61,8 +75,14 @@ func (p *idManagerPoolImpl) Done() <-chan struct{} {
 }
 
 func (p *idManagerPoolImpl) GetAny() (middleware_entities.IDManagerConnection, error) {
+	ctx := ezlog.NewLoggerContext("id-manager-pool-get-any")
+
 	managers := p.repository.GetAll()
 	if len(managers) == 0 {
+		defaultManager, err := p.getDefault(ctx)
+		if err == nil {
+			return defaultManager, nil
+		}
 		return nil, fmt.Errorf("no available id managers")
 	}
 
@@ -71,19 +91,26 @@ func (p *idManagerPoolImpl) GetAny() (middleware_entities.IDManagerConnection, e
 }
 
 func (p *idManagerPoolImpl) GetAll() ([]middleware_entities.IDManagerConnection, error) {
+	ctx := ezlog.NewLoggerContext("id-manager-pool-get-all")
+
 	managers := p.repository.GetAll()
 	connections := make([]middleware_entities.IDManagerConnection, 0, len(managers))
 
 	for _, manager := range managers {
 		conn, err := p.connectionBuilder(manager, p.privateKey, p.ownID)
 		if err != nil {
-			log.Printf("Error connecting to ID Manager %s:%d: %v", manager.IP, manager.Port, err)
+			ezlog.Log(ctx).Warnf("Error connecting to ID Manager %s:%d: %v", manager.IP, manager.Port, err)
 			continue
 		}
 		connections = append(connections, conn)
 	}
 
 	if len(connections) == 0 {
+		defaultManager, err := p.getDefault(ctx)
+		if err == nil {
+			return []middleware_entities.IDManagerConnection{defaultManager}, nil
+		}
+		ezlog.Log(ctx).Warn("No available ID Managers found and no default configured")
 		return nil, fmt.Errorf("no available id managers")
 	}
 
@@ -91,6 +118,7 @@ func (p *idManagerPoolImpl) GetAll() ([]middleware_entities.IDManagerConnection,
 }
 
 func (p *idManagerPoolImpl) processAnnouncements() {
+	// TODO: add context logger
 	for msg := range p.multicastNet.Announcements() {
 		if msg.Type == multicast.AnnounceIDManager {
 			idManagerMsg, err := msg.AsIDManagerMessage()
@@ -114,4 +142,56 @@ func (p *idManagerPoolImpl) processAnnouncements() {
 			p.repository.Add(idManagerMsg.ID, managerData)
 		}
 	}
+}
+
+func (p *idManagerPoolImpl) getDefault(ctx context.Context) (middleware_entities.IDManagerConnection, error) {
+	data := p.defaultManagerData
+	if data == nil {
+		ezlog.Log(ctx).Warnf("No default ID manager configured")
+		return nil, errors.New("no default id manager configured")
+	}
+
+	conn, err := p.connectionBuilder(*data, p.privateKey, p.ownID)
+	if err != nil {
+		ezlog.Log(ctx).Warnf("Failed to connect to default ID manager: %v", err)
+		return nil, err
+	}
+
+	return conn, nil
+}
+
+func getDefaultIDManagerData() (middleware_entities.IDManagerData, error) {
+	ipEnv, ok := os.LookupEnv("ID_MANAGER_IP")
+	if !ok {
+		return middleware_entities.IDManagerData{}, fmt.Errorf("no default ID manager configured: missing ID_MANAGER_IP")
+	}
+	ip := net.ParseIP(ipEnv)
+	if ip == nil {
+		return middleware_entities.IDManagerData{}, fmt.Errorf("invalid ID_MANAGER_IP: %s", ipEnv)
+	}
+
+	portEnv, ok := os.LookupEnv("ID_MANAGER_PORT")
+	if !ok {
+		return middleware_entities.IDManagerData{}, fmt.Errorf("no default ID manager configured: missing ID_MANAGER_PORT")
+	}
+	port, err := strconv.ParseUint(portEnv, 10, 16)
+	if err != nil {
+		return middleware_entities.IDManagerData{}, fmt.Errorf("invalid ID_MANAGER_PORT: %s", portEnv)
+	}
+
+	pkFile, ok := os.LookupEnv("ID_MANAGER_PUBLIC_KEY_FILE")
+	if !ok {
+		return middleware_entities.IDManagerData{}, fmt.Errorf("no default ID manager configured: missing ID_MANAGER_PUBLIC_KEY_FILE")
+	}
+
+	pkBytes, err := os.ReadFile(pkFile)
+	if err != nil {
+		return middleware_entities.IDManagerData{}, fmt.Errorf("failed to read public key file: %w", err)
+	}
+	pk, err := rsa.PublicKeyFromBytes(pkBytes)
+	if err != nil {
+		return middleware_entities.IDManagerData{}, fmt.Errorf("invalid public key in ID_MANAGER_PUBLIC_KEY_FILE: %w", err)
+	}
+
+	return middleware_entities.NewIDManagerData(ip, uint16(port), *pk), nil
 }
