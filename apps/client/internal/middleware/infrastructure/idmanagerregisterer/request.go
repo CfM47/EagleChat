@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"eaglechat/apps/client/internal/domain/entities"
-	"eaglechat/apps/client/internal/utils/simplecrypto/rsa"
+	"eaglechat/common/simplecrypto/rsa"
 	"encoding/json"
 	"fmt"
 	"net/http"

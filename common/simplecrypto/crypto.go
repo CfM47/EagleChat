@@ -1,8 +1,8 @@
 package simplecrypto
 
 import (
-	"eaglechat/apps/client/internal/utils/simplecrypto/aes"
-	"eaglechat/apps/client/internal/utils/simplecrypto/rsa"
+	"eaglechat/common/simplecrypto/aes"
+	"eaglechat/common/simplecrypto/rsa"
 	"encoding/json"
 	"errors"
 )

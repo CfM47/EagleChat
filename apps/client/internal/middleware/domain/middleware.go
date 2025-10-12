@@ -7,7 +7,7 @@ import (
 	message_cache "eaglechat/apps/client/internal/middleware/domain/repositories/messagecache"
 	user_cache "eaglechat/apps/client/internal/middleware/domain/repositories/usercache"
 	middleware_services "eaglechat/apps/client/internal/middleware/domain/services"
-	"eaglechat/apps/client/internal/utils/simplecrypto/rsa"
+	"eaglechat/common/simplecrypto/rsa"
 	"time"
 )
 

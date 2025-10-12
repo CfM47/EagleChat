@@ -44,3 +44,20 @@ jobs:
       - name: Run tests
         working-directory: apps/client
         run: go test ./...
+
+  test-common:
+    name: Test Common
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'common/go.mod'
+      
+      - name: Run tests
+        working-directory: common
+        run: go test ./...

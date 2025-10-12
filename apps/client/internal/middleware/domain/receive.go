@@ -3,7 +3,7 @@ package middleware
 import (
 	"bytes"
 	"eaglechat/apps/client/internal/domain/entities"
-	"eaglechat/apps/client/internal/utils/simplecrypto"
+	"eaglechat/common/simplecrypto"
 	"encoding/json"
 	"log"
 
