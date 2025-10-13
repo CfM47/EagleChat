@@ -63,6 +63,10 @@ func newChatView(actionsChan chan<- ui.UserAction) *ChatView {
 			actionsChan <- ui.SwitchToProfileAction{}
 			return nil
 		}
+		if event.Rune() == 'n' {
+			actionsChan <- ui.SwitchToNewContactViewAction{}
+			return nil
+		}
 		return event
 	})
 

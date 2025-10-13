@@ -13,9 +13,10 @@ type TUI struct {
 	pages *tview.Pages
 
 	// Child views
-	chatView     *ChatView
-	registerView *RegisterView
-	profileView  *ProfileView
+	chatView       *ChatView
+	registerView   *RegisterView
+	profileView    *ProfileView
+	newContactView *NewContactView
 
 	actionsChan chan ui.UserAction
 }
@@ -34,11 +35,13 @@ func New() *TUI {
 	t.chatView = newChatView(actionsChan)
 	t.registerView = newRegisterView(actionsChan)
 	t.profileView = newProfileView(actionsChan)
+	t.newContactView = newNewContactView(actionsChan)
 
 	// Add pages
 	t.pages.AddPage("register", t.registerView.grid, true, false)
 	t.pages.AddPage("chat", t.chatView.grid, true, false)
 	t.pages.AddPage("profile", t.profileView.grid, true, false)
+	t.pages.AddPage("new_contact", t.newContactView.grid, true, false)
 
 	t.app.SetRoot(t.pages, true).EnableMouse(true)
 	return t
@@ -67,6 +70,9 @@ func (t *TUI) Render(model models.UIModel) {
 		case models.ProfileState:
 			t.renderProfileView(model.ProfileView)
 			t.pages.SwitchToPage("profile")
+		case models.NewContactState:
+			t.renderNewContactView(model.NewContactView)
+			t.pages.SwitchToPage("new_contact")
 		}
 	})
 }
