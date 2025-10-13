@@ -1,0 +1,39 @@
+version: "3.8"
+
+services:
+  id_manager:
+    image: eaglechat-id_manager:latest
+    ports:
+      - target: ${ID_MANAGER_PORT:-8080}
+        published: ${ID_MANAGER_PORT:-8080}
+        protocol: tcp
+        mode: ingress
+    networks:
+      eaglechat_local_net:
+        ipv4_address: ${ID_MANAGER_IP:-172.28.1.1}
+    volumes:
+      - id_manager_data:/data
+
+  client:
+    image: eaglechat-client:latest
+    networks:
+      - eaglechat_local_net
+    depends_on:
+      - id_manager
+    command: ["/client"]
+    stdin_open: true
+    tty: true
+    deploy:
+      replicas: 2
+    # volumes:
+    #   - ./logs/client:/data/log
+
+networks:
+  eaglechat_local_net:
+    driver: overlay
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+
+volumes:
+  id_manager_data:

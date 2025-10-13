@@ -1,0 +1,35 @@
+# TODO
+
+- add get random user endpoint service for the id manager conn
+- make id manager user query loop be in parallel
+- make broadcast address an environment variable
+- allow retries in the registerer
+- request public key and port from id managers when discovered by the pool
+
+## DONE
+
+- add message receiver loop
+  - it will handle messages for oneself and for others
+
+- messages are to be sent in secure envelopes
+
+- add null IP handling when user data is queried for message method of
+middleware
+
+- add pending message sender loop
+  - it should prioritize own (immune) messages, the message cache
+  interface should allow for querying them
+
+- add id manager pending messages notifier loop (remove ad-hoc notification
+when message fails)
+
+- ensure chat overviews include no-chat users
+
+- remove old default id manager setup
+
+## CANCELLED
+
+- add message cachers storage for the middleware __(clients will not ask for pending
+messages, they will attempt to give pending messages)__
+- add pending message querier (for cachers updates and for allowance to delete
+non-immune pending messages) __(same as above)__

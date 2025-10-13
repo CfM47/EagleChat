@@ -1,0 +1,79 @@
+package repositories
+
+import (
+	"eaglechat/apps/client/internal/middleware/domain/entities"
+	"sync"
+	"time"
+)
+
+const pruneInterval = 10 * time.Second
+
+// expiringIDManagerData wraps IDManagerData with a timestamp to track its freshness.
+type expiringIDManagerData struct {
+	data     entities.IDManagerData
+	lastSeen time.Time
+}
+
+// inMemoryIDManagerRepository is a thread-safe, in-memory implementation of the
+// IDManagerRepository that automatically prunes stale entries.
+type inMemoryIDManagerRepository struct {
+	mu       sync.RWMutex
+	managers map[string]expiringIDManagerData
+}
+
+// NewInMemoryIDManagerRepository creates a new in-memory repository and starts a
+// background goroutine to prune stale entries.
+func NewInMemoryIDManagerRepository(expirationTime time.Duration) IDManagerRepository {
+	repo := &inMemoryIDManagerRepository{
+		managers: make(map[string]expiringIDManagerData),
+	}
+
+	go repo.startPruning(expirationTime)
+
+	return repo
+}
+
+func (r *inMemoryIDManagerRepository) Add(data entities.IDManagerData) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.managers[data.IP.String()] = expiringIDManagerData{
+		data:     data,
+		lastSeen: time.Now(),
+	}
+}
+
+func (r *inMemoryIDManagerRepository) GetAll() []entities.IDManagerData {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	var allData []entities.IDManagerData
+	for _, expiringData := range r.managers {
+		allData = append(allData, expiringData.data)
+	}
+	return allData
+}
+
+// startPruning runs a loop that periodically removes stale entries from the repository.
+func (r *inMemoryIDManagerRepository) startPruning(expirationTime time.Duration) {
+	ticker := time.NewTicker(pruneInterval)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		r.prune(expirationTime)
+	}
+}
+
+// prune removes entries that have not been seen for longer than the expiration time.
+func (r *inMemoryIDManagerRepository) prune(expirationTime time.Duration) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	pruneCutoff := time.Now().Add(-expirationTime)
+
+	for id, expiringData := range r.managers {
+		if expiringData.lastSeen.Before(pruneCutoff) {
+			delete(r.managers, id)
+		}
+	}
+}
