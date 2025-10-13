@@ -172,7 +172,7 @@ func (p *idManagerPoolImpl) pollDNS(ctx context.Context) {
 }
 
 func checkHealth(ctx context.Context, ip net.IP, port uint16) bool {
-	url := fmt.Sprintf("http://%s:%s/status", ip.String(), middleware_entities.DefaultIDManagerPort)
+	url := fmt.Sprintf("http://%s:%d/status", ip.String(), port)
 	ezlog.Log(ctx).Infof("Fetching status from %s", url)
 
 	resp, err := http.Get(url)
