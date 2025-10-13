@@ -3,10 +3,10 @@ package idmanagerconn
 import (
 	"bytes"
 	"eaglechat/apps/client/internal/domain/entities"
+	"eaglechat/common/ezlog"
 	"eaglechat/common/simplecrypto/rsa"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net"
 	"net/http"
 
@@ -14,11 +14,11 @@ import (
 )
 
 type queryUsersRequest struct {
-	IDs []string `json:"ids"`
+	IDs []string `json:"Ids"`
 }
 
 type userDataResponse struct {
-	Name      string `json:"name"`
+	Name      string `json:"username"`
 	PublicKey []byte `json:"public_key"`
 	IP        string `json:"ip,omitempty"`
 }
@@ -26,6 +26,7 @@ type userDataResponse struct {
 type queryUsersResponse map[string]userDataResponse
 
 func (c *idManagerConnectionImpl) QueryUsers(userIDs []entities.UserID, omitDisconnected bool) (map[entities.UserID]middleware_entities.UserData, error) {
+	ctx := ezlog.NewLoggerContext("query-users-request")
 	url := fmt.Sprintf("%s/users", c.baseURL)
 
 	stringIDs := make([]string, len(userIDs))
@@ -58,11 +59,13 @@ func (c *idManagerConnectionImpl) QueryUsers(userIDs []entities.UserID, omitDisc
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
+		ezlog.Log(ctx).Errorf("Failed to query users: %s", resp.Status)
 		return nil, fmt.Errorf("failed to query users: %s", resp.Status)
 	}
 
 	var response queryUsersResponse
 	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+		ezlog.Log(ctx).Errorf("Failed to decode query users response: %v", err)
 		return nil, err
 	}
 
@@ -71,11 +74,15 @@ func (c *idManagerConnectionImpl) QueryUsers(userIDs []entities.UserID, omitDisc
 		userID := entities.UserID(id)
 		publicKey, err := rsa.PublicKeyFromBytes(data.PublicKey)
 		if err != nil {
-			log.Printf("invalid public key found while querying user '%s' from id manager", userID)
+			ezlog.Log(ctx).Warnf("Invalid public key found while querying user '%s' from ID manager", userID)
 			continue
 		}
 
 		ip := net.ParseIP(data.IP)
+		if ip == nil {
+			ezlog.Log(ctx).Warnf("Invalid IP address found while querying user '%s' from ID manager: %s", userID, data.IP)
+			return nil, fmt.Errorf("invalid IP address for user %s: %s", userID, data.IP)
+		}
 
 		result[userID] = middleware_entities.UserData{
 			User: entities.NewUser(string(userID), data.Name, *publicKey),

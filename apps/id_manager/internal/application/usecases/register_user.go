@@ -2,11 +2,10 @@ package usecases
 
 import (
 	"context"
-	"log"
-	"net"
-
 	"eaglechat/apps/id_manager/internal/domain/entities"
 	"eaglechat/apps/id_manager/internal/domain/repositories/user"
+	"log"
+	"net"
 )
 
 type RegisterUserUseCase struct {
@@ -28,11 +27,13 @@ type RegisterUserResponse struct {
 }
 
 func (uc *RegisterUserUseCase) Execute(ctx context.Context, req *RegisterUserRequest) (*RegisterUserResponse, error) {
+	log.Printf("RegisterUserUseCase: Executing with username: %s", req.Username)
 	// The ID is left empty because the repository is responsible for generating it.
-	newUser := entities.NewUser("", req.Username, string(req.PublicKey))
+	newUser := entities.NewUser("", req.Username, req.PublicKey)
 
 	createdUser, err := uc.repo.Create(newUser)
 	if err != nil {
+		log.Printf("Error creating user: %v", err)
 		return nil, err
 	}
 

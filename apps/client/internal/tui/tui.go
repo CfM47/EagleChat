@@ -24,6 +24,9 @@ type TUI struct {
 
 // New creates and initializes all UI components.
 func New() *TUI {
+	ctx := ezlog.NewLoggerContext("tui-new")
+	ezlog.Log(ctx).Info("Initializing new TUI...")
+
 	actionsChan := make(chan ui.UserAction)
 
 	t := &TUI{
@@ -33,18 +36,23 @@ func New() *TUI {
 	}
 
 	// Initialize child views
-	t.chatView = newChatView(actionsChan)
+	ezlog.Log(ctx).Info("Creating child views...")
+	t.chatView = newChatView(t.app, actionsChan)
 	t.registerView = newRegisterView(actionsChan)
 	t.profileView = newProfileView(actionsChan)
 	t.newContactView = newNewContactView(actionsChan)
+	ezlog.Log(ctx).Info("Child views created.")
 
 	// Add pages
+	ezlog.Log(ctx).Info("Adding pages...")
 	t.pages.AddPage("register", t.registerView.grid, true, false)
 	t.pages.AddPage("chat", t.chatView.grid, true, false)
 	t.pages.AddPage("profile", t.profileView.grid, true, false)
 	t.pages.AddPage("new_contact", t.newContactView.grid, true, false)
+	ezlog.Log(ctx).Info("Pages added.")
 
 	t.app.SetRoot(t.pages, true).EnableMouse(true)
+	ezlog.Log(ctx).Info("TUI initialization complete.")
 	return t
 }
 
@@ -61,8 +69,8 @@ func (t *TUI) UserActions() <-chan ui.UserAction {
 // Render updates the UI widgets to reflect the given model.
 func (t *TUI) Render(model models.UIModel) {
 	ctx := ezlog.NewLoggerContext("tui-render")
-
 	t.app.QueueUpdateDraw(func() {
+		ezlog.Log(ctx).Infof("Rendering new state: %v", model.CurrentState)
 		switch model.CurrentState {
 		case models.RegisterState:
 			t.renderRegisterView(model.RegisterView)
