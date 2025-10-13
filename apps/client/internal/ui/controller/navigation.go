@@ -8,21 +8,12 @@ import (
 )
 
 func (c *Controller) handleSwitchChat(ctx context.Context, chatID string) {
-	if c.activeChatID == chatID {
+	if c.activeChatID != "" && c.activeChatID == chatID {
 		ezlog.Log(ctx).Debug("Chat is already active, no switch needed")
 		return
 	}
 
-	if chatID == "" {
-		if c.appState == models.ProfileState {
-			ezlog.Log(ctx).Info("Switching from profile view")
-		} else {
-			ezlog.Log(ctx).Warn("Received empty chat ID, ignoring")
-		}
-	} else {
-		ezlog.Log(ctx).Infof("Switching active chat to %s", chatID)
-		c.activeChatID = chatID
-	}
+	c.activeChatID = chatID
 
 	c.appState = models.ChatState
 

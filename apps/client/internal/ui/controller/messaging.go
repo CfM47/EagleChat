@@ -8,11 +8,11 @@ import (
 
 func (c *Controller) handleSendMessage(ctx context.Context, content string) {
 	if c.connectedMiddleware == nil {
-		ezlog.Log(ctx).Fatalf("Cannot send message: middleware not connected.")
+		ezlog.Log(ctx).Warnf("Cannot send message: middleware not connected.")
 		return
 	}
 	if c.activeChatID == "" {
-		ezlog.Log(ctx).Fatalf("Cannot send message: no active chat.")
+		ezlog.Log(ctx).Warnf("Cannot send message: no active chat.")
 		return
 	}
 
@@ -25,7 +25,7 @@ func (c *Controller) handleSendMessage(ctx context.Context, content string) {
 
 	self, err := c.repository.GetOwnProfile()
 	if err != nil {
-		ezlog.Log(ctx).Fatalf("Could not get own profile: %v", err)
+		ezlog.Log(ctx).Errorf("Could not get own profile: %v", err)
 		return
 	}
 

@@ -5,10 +5,12 @@ on:
     branches:
       - main
       - dev
+      - dumb-dev
   push:
     branches:
       - main
       - dev
+      - dumb-dev
 
 jobs:
   test-id-manager:

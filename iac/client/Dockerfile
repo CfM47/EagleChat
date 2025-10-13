@@ -9,10 +9,8 @@ COPY go.work go.work.sum ./
 COPY apps/id_manager/go.mod apps/id_manager/go.sum ./apps/id_manager/
 COPY apps/client/go.mod apps/client/go.sum ./apps/client/
 COPY common/go.mod ./common/
+COPY vendor ./vendor
 
-# Set the workdir to the specific app we are building
-WORKDIR /app/apps/client
-RUN go mod download
 
 # Change workdir back to the root to copy all source code
 WORKDIR /app
@@ -20,8 +18,9 @@ COPY ./apps/client ./apps/client
 COPY ./common ./common
 
 # Build the application
-WORKDIR /app/apps/client
-RUN CGO_ENABLED=0 GOOS=linux go build -o /client ./cmd/main.go
+# WORKDIR /app/apps/client
+# RUN CGO_ENABLED=0 GOOS=linux go build -o /client ./cmd/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -mod=vendor -o /client ./apps/client/cmd/main.go
 
 # Stage 2: Create the final, minimal image
 FROM alpine:latest
