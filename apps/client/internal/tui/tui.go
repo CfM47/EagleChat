@@ -3,6 +3,7 @@ package tui
 import (
 	"eaglechat/apps/client/internal/ui"
 	"eaglechat/apps/client/internal/ui/models"
+	"eaglechat/common/ezlog"
 
 	"github.com/rivo/tview"
 )
@@ -59,6 +60,8 @@ func (t *TUI) UserActions() <-chan ui.UserAction {
 
 // Render updates the UI widgets to reflect the given model.
 func (t *TUI) Render(model models.UIModel) {
+	ctx := ezlog.NewLoggerContext("tui-render")
+
 	t.app.QueueUpdateDraw(func() {
 		switch model.CurrentState {
 		case models.RegisterState:
@@ -71,7 +74,7 @@ func (t *TUI) Render(model models.UIModel) {
 			t.renderProfileView(model.ProfileView)
 			t.pages.SwitchToPage("profile")
 		case models.NewContactState:
-			t.renderNewContactView(model.NewContactView)
+			t.renderNewContactView(ctx, model.NewContactView)
 			t.pages.SwitchToPage("new_contact")
 		}
 	})

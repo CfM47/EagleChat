@@ -1,8 +1,10 @@
 package tui
 
 import (
+	"context"
 	"eaglechat/apps/client/internal/ui"
 	"eaglechat/apps/client/internal/ui/models"
+	"eaglechat/common/ezlog"
 	"fmt"
 
 	"github.com/gdamore/tcell/v2"
@@ -17,6 +19,8 @@ type NewContactView struct {
 
 // newNewContactView creates and configures the new contact view.
 func newNewContactView(actionsChan chan<- ui.UserAction) *NewContactView {
+	ctx := ezlog.NewLoggerContext("tui-new-contact-view")
+
 	ncv := &NewContactView{}
 
 	ncv.form = tview.NewForm().
@@ -33,6 +37,7 @@ func newNewContactView(actionsChan chan<- ui.UserAction) *NewContactView {
 
 	// --- Input Handlers ---
 	ncv.form.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		ezlog.Log(ctx).Infof("NewContactView captured key: %v", event)
 		if event.Key() == tcell.KeyEscape {
 			actionsChan <- ui.SwitchChatAction{ChatID: ""}
 			return nil
@@ -50,8 +55,11 @@ func newNewContactView(actionsChan chan<- ui.UserAction) *NewContactView {
 }
 
 // renderNewContactView updates the view with the given model.
-func (t *TUI) renderNewContactView(model models.NewContactViewModel) {
+func (t *TUI) renderNewContactView(ctx context.Context, model models.NewContactViewModel) {
+	ezlog.Log(ctx).Debugf("Rendering NewContactView with model: %+v", model)
+
 	if model.ErrorMessage != "" {
+		ezlog.Log(ctx).Infof("NewContactView error: %s", model.ErrorMessage)
 		title := fmt.Sprintf("[red]Error: %s", model.ErrorMessage)
 		t.newContactView.form.SetTitle(title)
 	} else {

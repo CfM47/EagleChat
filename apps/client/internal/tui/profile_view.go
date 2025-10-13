@@ -26,7 +26,6 @@ func newProfileView(actionsChan chan<- ui.UserAction) *ProfileView {
 	pv.nameField = tview.NewInputField().SetLabel("Username:").SetFieldWidth(40)
 	pv.idField = tview.NewInputField().SetLabel("Your ID:").SetFieldWidth(40)
 
-	// By not providing a `changed` function to AddInputField, the fields are effectively read-only.
 	pv.form.AddFormItem(pv.nameField)
 	pv.form.AddFormItem(pv.idField)
 	pv.form.AddButton("Back to Chats", func() {
@@ -35,12 +34,44 @@ func newProfileView(actionsChan chan<- ui.UserAction) *ProfileView {
 	pv.form.SetBorder(true).SetTitle("Your Profile")
 
 	// --- Input Handlers ---
-	pv.idField.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+
+	// Capture input to make fields read-only, allowing only navigation.
+	pv.nameField.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		// Allow navigation keys
+		if event.Key() == tcell.KeyTab || event.Key() == tcell.KeyBacktab {
+			return event
+		}
+		// Handle 'y' for copy
 		if event.Rune() == 'y' {
 			clipboard.WriteAll(pv.idField.GetText())
-			return nil // Absorb the 'y' key
+			return nil
 		}
-		return event
+		// Handle Escape to go back
+		if event.Key() == tcell.KeyEscape {
+			actionsChan <- ui.SwitchChatAction{ChatID: ""}
+			return nil
+		}
+		// Block all other input
+		return nil
+	})
+
+	pv.idField.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		// Allow navigation keys
+		if event.Key() == tcell.KeyTab || event.Key() == tcell.KeyBacktab {
+			return event
+		}
+		// Handle 'y' for copy
+		if event.Rune() == 'y' {
+			clipboard.WriteAll(pv.idField.GetText())
+			return nil
+		}
+		// Handle Escape to go back
+		if event.Key() == tcell.KeyEscape {
+			actionsChan <- ui.SwitchChatAction{ChatID: ""}
+			return nil
+		}
+		// Block all other input
+		return nil
 	})
 
 	// Use a grid to center the form
@@ -56,5 +87,5 @@ func newProfileView(actionsChan chan<- ui.UserAction) *ProfileView {
 func (t *TUI) renderProfileView(model models.ProfileViewModel) {
 	t.profileView.nameField.SetText(model.Username)
 	t.profileView.idField.SetText(model.ID)
-	t.profileView.form.SetTitle("Your Profile (focus ID and press 'y' to copy)")
+	t.profileView.form.SetTitle("Your Profile")
 }
