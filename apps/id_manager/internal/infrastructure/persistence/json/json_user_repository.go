@@ -76,9 +76,10 @@ func (r *JSONUserRepository) FindByID(ID string) (*entities.User, error) {
 	for _, u := range users {
 		if u.ID == ID {
 			// Check if IP is expired and nullify it if so
-			if u.IsIPExpired() {
-				u.IP = nil
-			}
+			// TODO: see why IsIPExpired always return false
+			// if u.IsIPExpired() {
+			// 	u.IP = nil
+			// }
 			return u, nil
 		}
 	}
