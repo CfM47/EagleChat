@@ -40,8 +40,8 @@ func NewContainer() (*Container, error) {
 	// Initialize use cases
 	queryUserDataUC := usecases.NewQueryUserDataUseCase(userRepo)
 	getRandomUsersUC := usecases.NewGetRandomUsersUseCase(userRepo)
-	queryPendingMessagesUC := usecases.NewQueryPendingMessagesUseCase(pendingMessagesRepo)
-	addPendingMessagesUC := usecases.NewAddPendingMessagesUseCase(pendingMessagesRepo)
+	queryPendingMessagesUC := usecases.NewQueryPendingMessagesUseCase(pendingMessagesRepo, userRepo)
+	addPendingMessagesUC := usecases.NewAddPendingMessagesUseCase(pendingMessagesRepo, userRepo)
 	registerUserUC := usecases.NewRegisterUserUseCase(userRepo)
 
 	// Initialize handlers
