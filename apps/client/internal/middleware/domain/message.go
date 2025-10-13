@@ -93,7 +93,7 @@ func (m *Middleware) storeAsPending(pendingMsg middleware_entities.PendingMessag
 }
 
 func (m *Middleware) getUserIfConnected(userID entities.UserID) (net.IP, error) {
-	data, err := m.getUserData([]entities.UserID{userID}, true)
+	data, err := m.getUserData(ezlog.NewLoggerContext("stump"), []entities.UserID{userID}, true)
 	if err != nil {
 		return nil, err
 	}

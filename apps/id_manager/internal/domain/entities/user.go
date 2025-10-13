@@ -12,7 +12,7 @@ const IPExpirationDuration = 30 * time.Second
 type User struct {
 	ID           string    `json:"id"`         // user unique id
 	Username     string    `json:"username"`   // user readable alias
-	PublicKeyPEM string    `json:"public_key"` // PEM codified RSA Public Key
+	PublicKeyPEM []byte    `json:"public_key"` // PEM codified RSA Public Key
 	IP           *net.IP   `json:"ip"`
 	LastSeen     time.Time `json:"last_seen"` // last moment of connection/disconnection
 }
@@ -22,7 +22,7 @@ type User struct {
 // ensuring that time comparisons are deterministic and testable, especially after
 // serialization and deserialization (e.g., to/from JSON), which also removes
 // the monotonic clock reading.
-func NewUser(id, username, publicKeyPEM string) *User {
+func NewUser(id, username string, publicKeyPEM []byte) *User {
 	return &User{
 		ID:           id,
 		Username:     username,

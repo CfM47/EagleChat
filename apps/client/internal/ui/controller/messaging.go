@@ -31,12 +31,16 @@ func (c *Controller) handleSendMessage(ctx context.Context, content string) {
 
 	message := entities.NewMessage(self.User, targetUser, content)
 
+	c.repository.SaveMessage(message)
+
 	ezlog.Log(ctx).Infof("Sending message to %s", c.activeChatID)
 	go func() {
 		if err := c.connectedMiddleware.Message(ctx, targetUser, message); err != nil {
 			ezlog.Log(ctx).Errorf("Failed to send message to %s: %v", c.activeChatID, err)
 		}
 	}()
+
+	c.render()
 }
 
 func (c *Controller) handleIncomingMessage(ctx context.Context, msg entities.Message) {

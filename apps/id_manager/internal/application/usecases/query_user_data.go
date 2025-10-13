@@ -21,7 +21,7 @@ type QueryUserRequest struct {
 
 type UserData struct {
 	Username  string  `json:"username"`
-	PublicKey string  `json:"public_key"`
+	PublicKey []byte  `json:"public_key"`
 	IP        *net.IP `json:"ip,omitempty"`
 }
 

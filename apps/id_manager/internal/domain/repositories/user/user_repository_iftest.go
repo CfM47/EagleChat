@@ -13,7 +13,7 @@ import (
 
 func mockUser() *entities.User {
 	id := entities.NewUUID()
-	return entities.NewUser(id, fmt.Sprintf("user-%s", id), fmt.Sprintf("pk-%s", id))
+	return entities.NewUser(id, fmt.Sprintf("user-%s", id), []byte(fmt.Sprintf("pk-%s", id)))
 }
 
 func RunUserRepositoryTests(t *testing.T, repoFactory func(t *testing.T) (UserRepository, func())) {
@@ -243,7 +243,7 @@ func RunUserRepositoryTests(t *testing.T, repoFactory func(t *testing.T) (UserRe
 		// Set an IP with an expired LastSeen
 		ip := net.ParseIP("192.0.2.1")
 		user.IP = &ip
-		user.LastSeen = entities.NewUser("", "", "").LastSeen.Add(-entities.IPExpirationDuration - 1*time.Hour)
+		user.LastSeen = entities.NewUser("", "", []byte("")).LastSeen.Add(-entities.IPExpirationDuration - 1*time.Hour)
 		require.NoError(t, repo.Save(user))
 
 		// Act
@@ -285,7 +285,7 @@ func RunUserRepositoryTests(t *testing.T, repoFactory func(t *testing.T) (UserRe
 		user1 := mockUser()
 		ip1 := net.ParseIP("192.0.2.1")
 		user1.IP = &ip1
-		user1.LastSeen = entities.NewUser("", "", "").LastSeen.Add(-entities.IPExpirationDuration - 1*time.Hour)
+		user1.LastSeen = entities.NewUser("", "", []byte("")).LastSeen.Add(-entities.IPExpirationDuration - 1*time.Hour)
 		require.NoError(t, repo.Save(user1))
 
 		// Create user with valid IP
