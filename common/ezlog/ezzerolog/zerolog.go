@@ -34,6 +34,9 @@ func (w *customWriter) Write(p []byte) (n int, err error) {
 
 	var b bytes.Buffer
 
+	if level, ok := event["level"]; ok {
+		b.WriteString(fmt.Sprintf("[%s] ", level))
+	}
 	if traceID, ok := event["trace_id"]; ok {
 		b.WriteString(fmt.Sprintf("[%s] ", traceID))
 	}
