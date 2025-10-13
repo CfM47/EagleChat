@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"net"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -30,8 +31,10 @@ func (h *AddPendingMessagesHandler) Handle(c *gin.Context) {
 		return
 	}
 	req.CacherID = cacherID
+	req.IP = net.ParseIP(c.ClientIP())
 
-	if err := h.useCase.Execute(&req); err != nil {
+	err := h.useCase.Execute(c.Request.Context(), &req)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		return
 	}
