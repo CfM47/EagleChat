@@ -20,6 +20,7 @@ type NewContactView struct {
 // newNewContactView creates and configures the new contact view.
 func newNewContactView(actionsChan chan<- ui.UserAction) *NewContactView {
 	ctx := ezlog.NewLoggerContext("tui-new-contact-view")
+	ezlog.Log(ctx).Info("Initializing NewContactView")
 
 	ncv := &NewContactView{}
 
@@ -29,7 +30,9 @@ func newNewContactView(actionsChan chan<- ui.UserAction) *NewContactView {
 	ncv.form.AddInputField("User ID", "", 40, nil, nil).
 		AddButton("Start Chat", func() {
 			id := ncv.form.GetFormItem(0).(*tview.InputField).GetText()
+			ezlog.Log(ctx).Infof("Starting chat with user ID: %s", id)
 			if id != "" {
+				ezlog.Log(ctx).Infof("Emitting StartChatWithUserAction for ID: %s", id)
 				actionsChan <- ui.StartChatWithUserAction{UserID: id}
 			}
 		}).

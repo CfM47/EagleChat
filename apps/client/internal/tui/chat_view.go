@@ -3,6 +3,7 @@ package tui
 import (
 	"eaglechat/apps/client/internal/ui"
 	"eaglechat/apps/client/internal/ui/models"
+	"eaglechat/common/ezlog"
 	"fmt"
 	"time"
 
@@ -19,7 +20,8 @@ type ChatView struct {
 }
 
 // newChatView creates and configures the main chat view.
-func newChatView(actionsChan chan<- ui.UserAction) *ChatView {
+func newChatView(app *tview.Application, actionsChan chan<- ui.UserAction) *ChatView {
+	ctx := ezlog.NewLoggerContext("chat-view-new")
 	cv := &ChatView{}
 
 	cv.chatList = tview.NewList().ShowSecondaryText(false)
@@ -48,22 +50,64 @@ func newChatView(actionsChan chan<- ui.UserAction) *ChatView {
 
 	// --- Input Handlers ---
 
+	// Handle j/k for vim-like navigation in the chat list.
+	cv.chatList.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		switch event.Rune() {
+		case 'j':
+			ezlog.Log(ctx).Debug("Chat list: 'j' pressed, moving down.")
+			currentItem := cv.chatList.GetCurrentItem()
+			cv.chatList.SetCurrentItem((currentItem + 1) % cv.chatList.GetItemCount())
+			return nil
+		case 'k':
+			ezlog.Log(ctx).Debug("Chat list: 'k' pressed, moving up.")
+			currentItem := cv.chatList.GetCurrentItem()
+			if currentItem > 0 {
+				cv.chatList.SetCurrentItem(currentItem - 1)
+			}
+			return nil
+		}
+		return event
+	})
+
 	cv.inputField.SetDoneFunc(func(key tcell.Key) {
 		if key == tcell.KeyEnter {
 			text := cv.inputField.GetText()
 			if text != "" {
+				ezlog.Log(ctx).Infof("Sending message: %s", text)
 				actionsChan <- ui.SendMessageAction{Content: text}
 				cv.inputField.SetText("")
 			}
 		}
 	})
 
+	// Global input capture for the entire chat view
 	cv.grid.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if event.Rune() == 'p' {
+		// If the user is typing, ignore all global shortcuts
+		if cv.inputField.HasFocus() {
+			// ...except for Tab, which we need to handle to escape the focus trap.
+			if event.Key() == tcell.KeyTab {
+				ezlog.Log(ctx).Debug("Tab pressed in input field, focusing chat list.")
+				app.SetFocus(cv.chatList)
+				return nil // Absorb the event
+			}
+			return event // Let the input field handle the key
+		}
+
+		// If the chat list has focus, Tab should switch to the input field
+		if cv.chatList.HasFocus() && event.Key() == tcell.KeyTab {
+			ezlog.Log(ctx).Debug("Tab pressed in chat list, focusing input field.")
+			app.SetFocus(cv.inputField)
+			return nil // Absorb the event
+		}
+
+		// Global shortcuts (only active when not typing)
+		switch event.Rune() {
+		case 'p':
+			ezlog.Log(ctx).Debug("'p' pressed, switching to profile.")
 			actionsChan <- ui.SwitchToProfileAction{}
 			return nil
-		}
-		if event.Rune() == 'n' {
+		case 'n':
+			ezlog.Log(ctx).Debug("'n' pressed, switching to new contact view.")
 			actionsChan <- ui.SwitchToNewContactViewAction{}
 			return nil
 		}
