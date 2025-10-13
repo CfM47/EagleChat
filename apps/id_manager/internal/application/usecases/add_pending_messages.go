@@ -1,17 +1,22 @@
 package usecases
 
 import (
+	"context"
 	"eaglechat/apps/id_manager/internal/domain/entities"
 	"eaglechat/apps/id_manager/internal/domain/repositories/pendingmessage"
+	"eaglechat/apps/id_manager/internal/domain/repositories/user"
+	"log"
+	"net"
 	"slices"
 )
 
 type AddPendingMessagesUseCase struct {
-	repo pendingmessage.PendingMessageRepository
+	pendingMessageRepo pendingmessage.PendingMessageRepository
+	userRepo           user.UserRepository
 }
 
-func NewAddPendingMessagesUseCase(repo pendingmessage.PendingMessageRepository) *AddPendingMessagesUseCase {
-	return &AddPendingMessagesUseCase{repo: repo}
+func NewAddPendingMessagesUseCase(pmr pendingmessage.PendingMessageRepository, ur user.UserRepository) *AddPendingMessagesUseCase {
+	return &AddPendingMessagesUseCase{pendingMessageRepo: pmr, userRepo: ur}
 }
 
 type MessageTarget struct {
@@ -22,15 +27,23 @@ type MessageTarget struct {
 type AddPendingMessagesRequest struct {
 	MessageTargets []MessageTarget `json:"message_targets"`
 	CacherID       string          `json:"cacher_id"`
+	IP             net.IP          `json:"-"`
 }
 
-func (uc *AddPendingMessagesUseCase) Execute(req *AddPendingMessagesRequest) error {
+func (uc *AddPendingMessagesUseCase) Execute(ctx context.Context, req *AddPendingMessagesRequest) error {
+	if req.IP != nil {
+		_ = uc.userRepo.UpdateIP(req.CacherID, req.IP)
+	}
+
+	log.Printf("starting lop")
 	for _, mt := range req.MessageTargets {
-		pm, err := uc.repo.FindByID(mt.MessageID, mt.TargetID)
+		pm, err := uc.pendingMessageRepo.FindByID(mt.MessageID, mt.TargetID)
+		log.Printf("i was able to find by id")
 		if err != nil {
 			if err == pendingmessage.ErrPendingMessageNotFound {
 				newPm := entities.NewPendingMessage(mt.MessageID, mt.TargetID, []string{req.CacherID})
-				if err := uc.repo.Save(newPm); err != nil {
+				if err := uc.pendingMessageRepo.Save(newPm); err != nil {
+					log.Printf("i had an error new pending message")
 					return err
 				}
 				continue
@@ -42,7 +55,7 @@ func (uc *AddPendingMessagesUseCase) Execute(req *AddPendingMessagesRequest) err
 
 		if !cacherExists {
 			pm.CachersId = append(pm.CachersId, req.CacherID)
-			if err := uc.repo.Save(pm); err != nil {
+			if err := uc.pendingMessageRepo.Save(pm); err != nil {
 				return err
 			}
 		}

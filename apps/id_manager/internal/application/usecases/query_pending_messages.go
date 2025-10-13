@@ -1,21 +1,27 @@
 package usecases
 
 import (
+	"context"
 	"eaglechat/apps/id_manager/internal/domain/entities"
 	"eaglechat/apps/id_manager/internal/domain/repositories/pendingmessage"
+	"eaglechat/apps/id_manager/internal/domain/repositories/user"
+	"net"
 )
 
 type QueryPendingMessagesUseCase struct {
-	repo pendingmessage.PendingMessageRepository
+	pendingMessageRepo pendingmessage.PendingMessageRepository
+	userRepo           user.UserRepository
 }
 
-func NewQueryPendingMessagesUseCase(repo pendingmessage.PendingMessageRepository) *QueryPendingMessagesUseCase {
-	return &QueryPendingMessagesUseCase{repo: repo}
+func NewQueryPendingMessagesUseCase(pmr pendingmessage.PendingMessageRepository, ur user.UserRepository) *QueryPendingMessagesUseCase {
+	return &QueryPendingMessagesUseCase{pendingMessageRepo: pmr, userRepo: ur}
 }
 
 type QueryPendingMessagesRequest struct {
 	TargetID   *string `json:"target_id"`
 	GetCachers bool    `json:"get_cachers"`
+	QuerierID  string  `json:"-"`
+	IP         net.IP  `json:"-"`
 }
 
 type PendingMessageTarget struct {
@@ -28,14 +34,18 @@ type QueryPendingMessagesResponse struct {
 	MessageTargets []PendingMessageTarget `json:"message_targets"`
 }
 
-func (uc *QueryPendingMessagesUseCase) Execute(req *QueryPendingMessagesRequest) (*QueryPendingMessagesResponse, error) {
+func (uc *QueryPendingMessagesUseCase) Execute(ctx context.Context, req *QueryPendingMessagesRequest) (*QueryPendingMessagesResponse, error) {
+	if req.IP != nil && req.QuerierID != "" {
+		_ = uc.userRepo.UpdateIP(req.QuerierID, req.IP)
+	}
+
 	var messages []*entities.PendingMessage
 	var err error
 
 	if req.TargetID != nil {
-		messages, err = uc.repo.FindByTargetID(*req.TargetID)
+		messages, err = uc.pendingMessageRepo.FindByTargetID(*req.TargetID)
 	} else {
-		messages, err = uc.repo.FindAll()
+		messages, err = uc.pendingMessageRepo.FindAll()
 	}
 
 	if err != nil {
