@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"eaglechat/apps/client/internal/domain/entities"
+	"eaglechat/apps/client/internal/ui/models"
 	"eaglechat/common/ezlog"
 )
 
@@ -12,8 +13,18 @@ func (c *Controller) handleSwitchChat(ctx context.Context, chatID string) {
 		return
 	}
 
-	ezlog.Log(ctx).Infof("Switching active chat to %s", chatID)
-	c.activeChatID = chatID
+	if chatID == "" {
+		if c.appState == models.ProfileState {
+			ezlog.Log(ctx).Info("Switching from profile view")
+		} else {
+			ezlog.Log(ctx).Warn("Received empty chat ID, ignoring")
+		}
+	} else {
+		ezlog.Log(ctx).Infof("Switching active chat to %s", chatID)
+		c.activeChatID = chatID
+	}
+
+	c.appState = models.ChatState
 
 	// Reset the unread count for the newly active chat.
 	if err := c.repository.ResetUnreadCount(entities.UserID(chatID)); err != nil {
@@ -21,5 +32,19 @@ func (c *Controller) handleSwitchChat(ctx context.Context, chatID string) {
 	}
 
 	// Re-render the UI to show the new active chat.
+	c.render()
+}
+
+func (c *Controller) handleSwitchToProfile(ctx context.Context) {
+	ezlog.Log(ctx).Info("Switching to profile view")
+
+	c.appState = models.ProfileState
+
+	c.render()
+}
+
+func (c *Controller) handleSwitchToNewContactView(ctx context.Context) {
+	ezlog.Log(ctx).Info("Switching to new contact view")
+	c.appState = models.NewContactState
 	c.render()
 }

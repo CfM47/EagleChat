@@ -3,11 +3,14 @@ package controller
 import (
 	"eaglechat/apps/client/internal/domain/entities"
 	"eaglechat/apps/client/internal/ui/models"
+	"eaglechat/common/ezlog"
 	"log"
 )
 
 // render queries the repositories and builds the UI model for the current state.
 func (c *Controller) render() {
+	ctx := ezlog.NewLoggerContext("render")
+
 	model := models.UIModel{CurrentState: c.appState}
 
 	switch c.appState {
@@ -15,6 +18,20 @@ func (c *Controller) render() {
 		model.RegisterView = models.RegisterViewModel{
 			PromptMessage: "Welcome to EagleChat! Please enter your name to register.",
 			ErrorMessage:  c.error,
+		}
+	case models.ProfileState:
+		profile, err := c.repository.GetOwnProfile()
+		if err != nil {
+			ezlog.Log(ctx).Errorf("Failed to get own profile: %v", err)
+			return
+		}
+		model.ProfileView = models.ProfileViewModel{
+			ID:       string(profile.User.ID),
+			Username: profile.User.Name,
+		}
+	case models.NewContactState:
+		model.NewContactView = models.NewContactViewModel{
+			ErrorMessage: c.error,
 		}
 
 	case models.ChatState:

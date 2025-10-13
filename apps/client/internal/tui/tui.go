@@ -15,6 +15,7 @@ type TUI struct {
 	// Child views
 	chatView     *ChatView
 	registerView *RegisterView
+	profileView  *ProfileView
 
 	actionsChan chan ui.UserAction
 }
@@ -32,10 +33,12 @@ func New() *TUI {
 	// Initialize child views
 	t.chatView = newChatView(actionsChan)
 	t.registerView = newRegisterView(actionsChan)
+	t.profileView = newProfileView(actionsChan)
 
 	// Add pages
 	t.pages.AddPage("register", t.registerView.grid, true, false)
 	t.pages.AddPage("chat", t.chatView.grid, true, false)
+	t.pages.AddPage("profile", t.profileView.grid, true, false)
 
 	t.app.SetRoot(t.pages, true).EnableMouse(true)
 	return t
@@ -61,7 +64,9 @@ func (t *TUI) Render(model models.UIModel) {
 		case models.ChatState:
 			t.renderChatView(model.ChatView)
 			t.pages.SwitchToPage("chat")
+		case models.ProfileState:
+			t.renderProfileView(model.ProfileView)
+			t.pages.SwitchToPage("profile")
 		}
 	})
 }
-

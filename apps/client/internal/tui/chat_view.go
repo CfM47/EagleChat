@@ -58,6 +58,14 @@ func newChatView(actionsChan chan<- ui.UserAction) *ChatView {
 		}
 	})
 
+	cv.grid.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Rune() == 'p' {
+			actionsChan <- ui.SwitchToProfileAction{}
+			return nil
+		}
+		return event
+	})
+
 	return cv
 }
 
@@ -74,7 +82,16 @@ func (t *TUI) renderChatView(model models.ChatViewModel) {
 		} else {
 			title = chat.Name
 		}
-		t.chatView.chatList.AddItem(title, chat.LastMessage, 0, func() {
+		var lastMessage string
+		if chat.LastMessage == nil {
+			lastMessage = "[No messages]"
+		} else {
+			lastMessage = *chat.LastMessage
+		}
+
+		// TODO: Timestamp: may be 0
+
+		t.chatView.chatList.AddItem(title, lastMessage, 0, func() {
 			t.actionsChan <- ui.SwitchChatAction{ChatID: chatCopy.ID}
 		})
 	}

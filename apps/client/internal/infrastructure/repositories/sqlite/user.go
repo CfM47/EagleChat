@@ -36,7 +36,11 @@ func (r *sqliteRepository) saveUser(tx *sql.Tx, user entities.User) error {
 
 	query := `INSERT OR REPLACE INTO user (id, name, public_key, last_seen) VALUES (?, ?, ?, ?);`
 	_, err = tx.Exec(query, user.ID, user.Name, pubKeyBytes, user.LastSeen.Unix())
-	return err
+	if err != nil {
+		return err
+	}
+
+	return r.createChat(tx, user.ID)
 }
 
 // GetUser retrieves public data about a user.

@@ -14,6 +14,22 @@ type SendMessageAction struct{ Content string }
 func (SendMessageAction) isUserAction() {}
 
 // SwitchChatAction is triggered when the user switches the active chat.
+// if ChatID is "", the chat view will be entered, this is used when switching back from profile view.
 type SwitchChatAction struct{ ChatID string }
 
 func (SwitchChatAction) isUserAction() {}
+
+// SwitchToProfileAction is triggered when the user navigates to their profile view.
+type SwitchToProfileAction struct{}
+
+func (SwitchToProfileAction) isUserAction() {}
+
+// SwitchToNewContactViewAction is triggered when the user navigates to the new contact screen.
+type SwitchToNewContactViewAction struct{}
+
+func (SwitchToNewContactViewAction) isUserAction() {}
+
+// StartChatWithUserAction is triggered when the user submits a new user ID to start a chat.
+type StartChatWithUserAction struct{ UserID string }
+
+func (StartChatWithUserAction) isUserAction() {}

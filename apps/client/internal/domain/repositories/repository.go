@@ -14,7 +14,7 @@ var (
 // ChatOverview is a summary of a chat for display in a list.
 type ChatOverview struct {
 	Partner     entities.User
-	LastMessage string
+	LastMessage *string
 	Timestamp   time.Time
 	UnreadCount int
 }
@@ -33,7 +33,7 @@ type ClientRepository interface {
 	GetChat(entities.UserID) ([]entities.Message, error)
 
 	// GetAllChatOverviews returns the corresponding ChatOverview object for each chat
-	// in the repository
+	// in the repository, including empty chats (with UnreadCount = 0 and LastMessage = nil).
 	GetAllChatOverviews() ([]ChatOverview, error)
 
 	IncrementUnreadCount(entities.UserID) error
