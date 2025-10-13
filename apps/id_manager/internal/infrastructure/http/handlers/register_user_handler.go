@@ -1,10 +1,9 @@
 package handlers
 
 import (
+	"eaglechat/apps/id_manager/internal/application/usecases"
 	"log"
 	"net/http"
-
-	"eaglechat/apps/id_manager/internal/application/usecases"
 
 	"github.com/gin-gonic/gin"
 )
@@ -18,8 +17,10 @@ func NewRegisterUserHandler(uc usecases.UseCase[*usecases.RegisterUserRequest, *
 }
 
 func (h *RegisterUserHandler) Handle(c *gin.Context) {
+	log.Println("Handling user registration request")
 	var req usecases.RegisterUserRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		log.Printf("Error binding JSON: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
 		return
 	}

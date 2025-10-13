@@ -27,7 +27,6 @@ func (m *Middleware) messageSender(ctx context.Context) {
 		case <-m.Done():
 			return
 		case <-m.messageSenderTicker.C:
-			m.trySendPendingMessages()
 		}
 	}
 }
@@ -78,7 +77,7 @@ func (m *Middleware) getPrioritizedOnlineUsers() ([]middleware_entities.UserData
 	}
 
 	// Find which of those users are online
-	onlineUsersData, err := m.getUserData(userIDs, true)
+	onlineUsersData, err := m.getUserData(ezlog.NewLoggerContext("stump"), userIDs, true)
 	if err != nil {
 		return nil, fmt.Errorf("could not query users: %w", err)
 	}

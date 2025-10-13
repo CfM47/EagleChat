@@ -37,11 +37,21 @@ func (c *Controller) render() {
 	case models.ChatState:
 		overviews, err := c.repository.GetAllChatOverviews()
 		if err != nil {
-			log.Printf("Failed to get chat overviews: %v", err)
+			ezlog.Log(ctx).Errorf("Failed to get chat overviews: %v", err)
 		}
+
 		activeChatMessages, err := c.repository.GetChat(entities.UserID(c.activeChatID))
+		ezlog.Log(ctx).Debugf("Active chat ID: %s, messages count: %d", c.activeChatID, len(activeChatMessages))
+
 		if err != nil {
-			log.Printf("Failed to get active chat: %v", err)
+			ezlog.Log(ctx).Errorf("Failed to get active chat messages: %v", err)
+		}
+		var user entities.User
+		if c.activeChatID != "" {
+			user, err = c.repository.GetUser(entities.UserID(c.activeChatID))
+			if err != nil {
+				ezlog.Log(ctx).Errorf("Failed to get user for active chat ID %s: %v", c.activeChatID, err)
+			}
 		}
 
 		inactiveChats := make([]models.InactiveChatModel, len(overviews))
@@ -67,6 +77,7 @@ func (c *Controller) render() {
 			activeChat = &models.ActiveChatModel{
 				ID:       c.activeChatID,
 				Messages: msgs,
+				Name:     user.Name,
 			}
 		}
 

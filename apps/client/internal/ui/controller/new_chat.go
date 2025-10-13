@@ -14,8 +14,6 @@ func (c *Controller) handleStartChatWithUser(ctx context.Context, userID string)
 	if err != nil {
 		ezlog.Log(ctx).Warnf("Failed to query user %s: %v", userID, err)
 		c.setError("User not found or an error occurred.")
-		// We want to re-render the NewContact view with the error,
-		// so we don't change the app state here.
 		c.render()
 		return
 	}
