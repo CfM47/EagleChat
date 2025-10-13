@@ -9,11 +9,7 @@ type IDManagerRepository interface {
 	// Add adds a new ID Manager's data to the repository or updates the
 	// existing entry if an entry with the same ID already exists. This method
 	// should also update the internal 'last seen' timestamp for the entry.
-	Add(id string, data entities.IDManagerData)
-
-	// Get retrieves an ID Manager's data by its unique ID. It returns the
-	// data and a boolean indicating whether the entry was found.
-	Get(id string) (entities.IDManagerData, bool)
+	Add(data entities.IDManagerData)
 
 	// GetAll retrieves the data for all active ID Managers currently held
 	// in the repository.

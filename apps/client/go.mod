@@ -3,6 +3,7 @@ module eaglechat/apps/client
 go 1.24.3
 
 require (
+	github.com/atotto/clipboard v0.1.4
 	github.com/gdamore/tcell/v2 v2.9.0
 	github.com/google/uuid v1.6.0
 	github.com/rivo/tview v0.42.0

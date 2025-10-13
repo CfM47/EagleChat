@@ -63,7 +63,7 @@ func (r *JSONPendingMessageRepository) Save(item *entities.PendingMessage) error
 // FindByID implements pendingmessage.PendingMessageRepository.
 func (r *JSONPendingMessageRepository) FindByID(message_id string, target_id string) (*entities.PendingMessage, error) {
 	r.mu.RLock()
-	defer r.mu.RLock()
+	defer r.mu.RUnlock()
 
 	collection, err := r.load()
 	if err != nil {

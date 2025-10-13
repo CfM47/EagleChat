@@ -1,9 +1,11 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
 
 	"eaglechat/apps/id_manager/internal/application/usecases"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -21,6 +23,10 @@ func (h *RegisterUserHandler) Handle(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
 		return
 	}
+
+	// Get IP from the request and add it to the request struct
+	req.IP = c.ClientIP()
+	log.Printf("New user registered with Ip: %s", req.IP)
 
 	resp, err := h.useCase.Execute(c.Request.Context(), &req)
 	if err != nil {

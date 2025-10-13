@@ -51,7 +51,7 @@ func (c *idManagerConnectionImpl) NotifyOfPendingMessages(messageTargets []middl
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode != http.StatusAccepted {
 		return fmt.Errorf("failed to notify of pending messages: %s", resp.Status)
 	}
 

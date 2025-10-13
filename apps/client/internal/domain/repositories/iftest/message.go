@@ -100,4 +100,61 @@ func runMessageTests(t *testing.T, factory RepoFactory) {
 		require.NoError(t, err)
 		assert.Len(t, retrievedChat, 1)
 	})
+
+	t.Run("overview for user with no messages is empty", func(t *testing.T) {
+		t.Parallel()
+		// Arrange
+		repo, cleanup := factory(t)
+		defer cleanup()
+
+		// We need a profile for the "self" user for the repository to work correctly
+		// with chat directions, even if no messages are sent from self.
+		privKeyA := getTestKeys(0)
+		userA := entities.NewUser("user-A", "Alice", *privKeyA.PublicKey())
+		profileA := entities.NewOwnProfile(userA, *privKeyA)
+		require.NoError(t, repo.SaveOwnProfile(profileA))
+
+		// This is the user we will have an empty chat with.
+		privKeyB := getTestKeys(1)
+		userB := entities.NewUser("user-B", "Bob", *privKeyB.PublicKey())
+		require.NoError(t, repo.SaveUser(userB))
+
+		// Act
+		overviews, err := repo.GetAllChatOverviews()
+		require.NoError(t, err)
+
+		// Assert
+		require.Len(t, overviews, 1, "Expected one chat overview for the saved user")
+
+		overview := overviews[0]
+		assert.Equal(t, userB.ID, overview.Partner.ID)
+		assert.Nil(t, overview.LastMessage)
+		assert.Zero(t, overview.UnreadCount)
+	})
+
+	t.Run("get chat on user with no messages returns empty list", func(t *testing.T) {
+		t.Parallel()
+		// Arrange
+		repo, cleanup := factory(t)
+		defer cleanup()
+
+		// We need a profile for the "self" user for the repository to work correctly
+		// with chat directions, even if no messages are sent from self.
+		privKeyA := getTestKeys(0)
+		userA := entities.NewUser("user-A", "Alice", *privKeyA.PublicKey())
+		profileA := entities.NewOwnProfile(userA, *privKeyA)
+		require.NoError(t, repo.SaveOwnProfile(profileA))
+
+		// This is the user we will have an empty chat with.
+		privKeyB := getTestKeys(1)
+		userB := entities.NewUser("user-B", "Bob", *privKeyB.PublicKey())
+		require.NoError(t, repo.SaveUser(userB))
+
+		// Act
+		messages, err := repo.GetChat(userB.ID)
+
+		// Assert
+		require.NoError(t, err)
+		assert.Empty(t, messages, "Expected no messages for user with no chat history")
+	})
 }

@@ -4,6 +4,7 @@
 - make id manager user query loop be in parallel
 - make broadcast address an environment variable
 - allow retries in the registerer
+- request public key and port from id managers when discovered by the pool
 
 ## DONE
 
@@ -21,6 +22,10 @@ middleware
 
 - add id manager pending messages notifier loop (remove ad-hoc notification
 when message fails)
+
+- ensure chat overviews include no-chat users
+
+- remove old default id manager setup
 
 ## CANCELLED
 

@@ -3,47 +3,53 @@ package idmanagerpool
 import (
 	"context"
 	"eaglechat/apps/client/internal/domain/entities"
-	middleware_entities "eaglechat/apps/client/internal/middleware/domain/entities"
 	"eaglechat/apps/client/internal/middleware/domain/services"
-	"eaglechat/apps/client/internal/middleware/infrastructure/environment"
 	"eaglechat/apps/client/internal/middleware/infrastructure/idmanagerpool/repositories"
 	"eaglechat/common/ezlog"
-	"eaglechat/common/multicast/implementation"
-	multicast "eaglechat/common/multicast/interface"
+	"eaglechat/common/ns"
 	"eaglechat/common/simplecrypto/rsa"
-	"errors"
+	"encoding/json"
 	"fmt"
 	"log"
 	"math/rand"
 	"net"
-	"strconv"
+	"net/http"
 	"time"
+
+	middleware_entities "eaglechat/apps/client/internal/middleware/domain/entities"
 )
 
 const (
-	MulticastAddress = "239.0.0.1:9999"
-	ExpirationTime   = 30 * time.Second
+	// How often to poll DNS for new ID Managers.
+	DNSPOllInterval = 15 * time.Second
+	// How long to consider an ID Manager valid without a successful poll.
+	ExpirationTime = 30 * time.Second
 )
 
 type idManagerPoolImpl struct {
-	repository         repositories.IDManagerRepository
-	privateKey         rsa.PrivateKey
-	connectionBuilder  middleware_entities.IDManagerConnBuilder
-	ownID              entities.UserID
-	multicastNet       multicast.MulticastNetwork
-	defaultManagerData *middleware_entities.IDManagerData
+	repository        repositories.IDManagerRepository
+	privateKey        rsa.PrivateKey
+	connectionBuilder middleware_entities.IDManagerConnBuilder
+	ownID             entities.UserID
+	quitChan          chan struct{}
+	doneChan          chan struct{}
+}
+
+//  TODO: Backlog
+
+// // MetadataResponse defines the structure of the JSON response from the /metadata endpoint.
+// type MetadataResponse struct {
+// 	ID        string `json:"id"`
+// 	PublicKey []byte `json:"public_key"`
+// }
+
+type StatusResponse struct {
+	Status string `json:"status"`
 }
 
 // BuildIDManagerPool creates a new IDManagerPool, initializes the repository, and starts
-// processing multicast announcements.
+// polling for ID Manager instances via DNS.
 func BuildIDManagerPool(privateKey rsa.PrivateKey, connectionBuilder middleware_entities.IDManagerConnBuilder, ownID entities.UserID) (services.IDManagerPool, error) {
-	ctx := ezlog.NewLoggerContext("id-manager-pool-build")
-
-	multicastNet, err := implementation.New(MulticastAddress)
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize multicast network: %w", err)
-	}
-
 	repo := repositories.NewInMemoryIDManagerRepository(ExpirationTime)
 
 	pool := &idManagerPoolImpl{
@@ -51,49 +57,50 @@ func BuildIDManagerPool(privateKey rsa.PrivateKey, connectionBuilder middleware_
 		privateKey:        privateKey,
 		connectionBuilder: connectionBuilder,
 		ownID:             ownID,
-		multicastNet:      multicastNet,
+		quitChan:          make(chan struct{}),
+		doneChan:          make(chan struct{}),
 	}
 
-	data, err := environment.GetDefaultIDManagerData()
-	if err != nil {
-		ezlog.Log(ctx).Warnf("No default ID manager configured: %v", err)
-	} else {
-		pool.defaultManagerData = &data
-	}
-
-	go pool.processAnnouncements()
+	ctx := ezlog.NewLoggerContext("id-manager-pool-poll-loop")
+	go pool.pollDNSLoop(ctx)
 
 	return pool, nil
 }
 
 func (p *idManagerPoolImpl) Close() error {
-	return p.multicastNet.Close()
+	close(p.quitChan)
+	<-p.doneChan
+	return nil
 }
 
 func (p *idManagerPoolImpl) Done() <-chan struct{} {
-	return p.multicastNet.Done()
+	return p.doneChan
 }
 
 func (p *idManagerPoolImpl) GetAny() (middleware_entities.IDManagerConnection, error) {
 	ctx := ezlog.NewLoggerContext("id-manager-pool-get-any")
+	ezlog.Log(ctx).Info("Fetching any available ID Manager connection")
 
 	managers := p.repository.GetAll()
 	if len(managers) == 0 {
-		defaultManager, err := p.getDefault(ctx)
-		if err == nil {
-			return defaultManager, nil
-		}
+		ezlog.Log(ctx).Warn("No available ID Managers found in repository, attempting to fetch default")
 		return nil, fmt.Errorf("no available id managers")
 	}
 
 	randomManager := managers[rand.Intn(len(managers))]
+	ezlog.Log(ctx).Infof("Selected ID Manager at %s:%d", randomManager.IP, randomManager.Port)
+
 	return p.connectionBuilder(randomManager, p.privateKey, p.ownID)
 }
 
 func (p *idManagerPoolImpl) GetAll() ([]middleware_entities.IDManagerConnection, error) {
 	ctx := ezlog.NewLoggerContext("id-manager-pool-get-all")
+	ezlog.Log(ctx).Info("Fetching all available ID Manager connections")
 
 	managers := p.repository.GetAll()
+
+	ezlog.Log(ctx).Infof("Found %d available ID Managers in repository", len(managers))
+
 	connections := make([]middleware_entities.IDManagerConnection, 0, len(managers))
 
 	for _, manager := range managers {
@@ -106,56 +113,88 @@ func (p *idManagerPoolImpl) GetAll() ([]middleware_entities.IDManagerConnection,
 	}
 
 	if len(connections) == 0 {
-		defaultManager, err := p.getDefault(ctx)
-		if err == nil {
-			return []middleware_entities.IDManagerConnection{defaultManager}, nil
-		}
 		ezlog.Log(ctx).Warn("No available ID Managers found and no default configured")
 		return nil, fmt.Errorf("no available id managers")
 	}
 
+	ezlog.Log(ctx).Infof("Successfully connected to %d ID Managers", len(connections))
+
 	return connections, nil
 }
 
-func (p *idManagerPoolImpl) processAnnouncements() {
-	// TODO: add context logger
-	for msg := range p.multicastNet.Announcements() {
-		if msg.Type == multicast.AnnounceIDManager {
-			idManagerMsg, err := msg.AsIDManagerMessage()
-			if err != nil {
-				log.Printf("Error decoding ID manager message: %v", err)
-				continue
-			}
+func (p *idManagerPoolImpl) pollDNSLoop(ctx context.Context) {
+	ezlog.Log(ctx).Info("Starting DNS polling loop for ID Managers...")
 
-			port, err := strconv.ParseUint(idManagerMsg.Port, 10, 16)
-			if err != nil {
-				log.Printf("Error parsing port from broadcast message: %v", err)
-				continue
-			}
+	defer close(p.doneChan)
+	defer ezlog.Log(ctx).Info("Stopped DNS polling loop for ID Managers.")
 
-			pk, err := rsa.PublicKeyFromBytes(idManagerMsg.PublicKey)
-			if err != nil {
-				log.Printf("Error parsing public key from broadcast message: %v", err)
-			}
-			managerData := middleware_entities.NewIDManagerData(net.ParseIP(idManagerMsg.IP), uint16(port), *pk)
+	ticker := time.NewTicker(DNSPOllInterval)
+	defer ticker.Stop()
 
-			p.repository.Add(idManagerMsg.ID, managerData)
+	// Poll once immediately on startup
+	pollCtx := ezlog.NewLoggerContext("id-manager-pool-poll")
+	p.pollDNS(pollCtx)
+
+	for {
+		select {
+		case <-ticker.C:
+			pollCtx = ezlog.NewLoggerContext("id-manager-pool-poll")
+			p.pollDNS(pollCtx)
+		case <-p.quitChan:
+			return
 		}
 	}
 }
 
-func (p *idManagerPoolImpl) getDefault(ctx context.Context) (middleware_entities.IDManagerConnection, error) {
-	data := p.defaultManagerData
-	if data == nil {
-		ezlog.Log(ctx).Warnf("No default ID manager configured")
-		return nil, errors.New("no default id manager configured")
-	}
-
-	conn, err := p.connectionBuilder(*data, p.privateKey, p.ownID)
+func (p *idManagerPoolImpl) pollDNS(ctx context.Context) {
+	ips, err := ns.NewDNSDiscovery().DiscoverIDManagerIPs(ctx)
 	if err != nil {
-		ezlog.Log(ctx).Warnf("Failed to connect to default ID manager: %v", err)
-		return nil, err
+		ezlog.Log(ctx).Warnf("DNS lookup for ID managers failed: %v", err)
+		return
 	}
 
-	return conn, nil
+	for _, ip := range ips {
+		checkHealth(ctx, ip, middleware_entities.DefaultIDManagerPort)
+
+		// TODO: Backlog
+		//
+		// pk, err := rsa.PublicKeyFromBytes(metadata.PublicKey)
+		// if err != nil {
+		// 	log.Printf("Error parsing public key from metadata: %v", err)
+		// 	continue
+		// }
+
+		// port, _ := strconv.ParseUint(IDManagerMetadataPort, 10, 16)
+		// managerData := middleware_entities.NewIDManagerData(ip, uint16(port), *pk)
+
+		p.repository.Add(middleware_entities.NewIDManagerData(ip, middleware_entities.DefaultIDManagerPort))
+	}
 }
+
+func checkHealth(ctx context.Context, ip net.IP, port uint16) bool {
+	url := fmt.Sprintf("http://%s:%d/status", ip.String(), port)
+	ezlog.Log(ctx).Infof("Fetching status from %s", url)
+
+	resp, err := http.Get(url)
+	if err != nil {
+		ezlog.Log(ctx).Warnf("Error fetching status from %s: %v", url, err)
+		return false
+	} else {
+		ezlog.Log(ctx).Infof("Received message from %s: %v", url, resp)
+	}
+
+	defer resp.Body.Close()
+
+	var status StatusResponse
+	if err := json.NewDecoder(resp.Body).Decode(&status); err != nil {
+		log.Printf("Error decoding metadata from %s: %v", url, err)
+		return false
+	}
+	if status.Status != "ok" {
+		ezlog.Log(ctx).Warnf("ID Manager at %s returned non-ok status: %s", url, status.Status)
+		return false
+	}
+
+	return true
+}
+
