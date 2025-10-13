@@ -33,25 +33,14 @@ func NewInMemoryIDManagerRepository(expirationTime time.Duration) IDManagerRepos
 	return repo
 }
 
-func (r *inMemoryIDManagerRepository) Add(id string, data entities.IDManagerData) {
+func (r *inMemoryIDManagerRepository) Add(data entities.IDManagerData) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	r.managers[id] = expiringIDManagerData{
+	r.managers[data.IP.String()] = expiringIDManagerData{
 		data:     data,
 		lastSeen: time.Now(),
 	}
-}
-
-func (r *inMemoryIDManagerRepository) Get(id string) (entities.IDManagerData, bool) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	expiringData, ok := r.managers[id]
-	if !ok {
-		return entities.IDManagerData{}, false
-	}
-	return expiringData.data, true
 }
 
 func (r *inMemoryIDManagerRepository) GetAll() []entities.IDManagerData {

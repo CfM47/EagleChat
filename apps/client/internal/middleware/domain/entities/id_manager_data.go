@@ -1,20 +1,28 @@
 package entities
 
 import (
-	"eaglechat/common/simplecrypto/rsa"
 	"net"
 )
 
+const DefaultIDManagerPort uint16 = 8080
+
 type IDManagerData struct {
-	IP        net.IP
-	Port      uint16
-	PublicKey rsa.PublicKey
+	IP   net.IP
+	Port uint16
+
+	// TODO: Backlog
+	//
+	// PublicKey rsa.PublicKey
 }
 
-func NewIDManagerData(IP net.IP, Port uint16, PublicKey rsa.PublicKey) IDManagerData {
+// TODO: Backlog
+//
+// func NewIDManagerData(IP net.IP, Port uint16, PublicKey rsa.PublicKey) IDManagerData {
+
+func NewIDManagerData(IP net.IP, Port uint16) IDManagerData {
 	return IDManagerData{
-		IP:        IP,
-		Port:      Port,
-		PublicKey: PublicKey,
+		IP:   IP,
+		Port: Port,
+		// PublicKey: PublicKey,
 	}
 }

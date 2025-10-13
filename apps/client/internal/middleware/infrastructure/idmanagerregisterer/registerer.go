@@ -5,7 +5,7 @@ import (
 	"eaglechat/apps/client/internal/domain/entities"
 	"eaglechat/apps/client/internal/domain/services"
 	"eaglechat/common/ezlog"
-	"eaglechat/common/multicast/implementation"
+	"eaglechat/common/ns"
 	"eaglechat/common/simplecrypto/rsa"
 	"fmt"
 	"net"
@@ -38,34 +38,29 @@ type IDManagerData struct {
 // Register orchestrates the discovery and HTTP registration process.
 func (r *registererImpl) Register(ctx context.Context, username string, sk rsa.PrivateKey) (entities.User, error) {
 	ctx, cancel := context.WithTimeout(ctx, r.registrationTimeout)
-	ezlog.Log(ctx).Info("beginning registration process")
+	ezlog.Log(ctx).Info("Beginning registration process")
 
 	defer cancel()
 
-	multicastNet, err := implementation.New(r.multicastAddress)
+	idManagerIps, err := ns.NewDNSDiscovery().DiscoverIDManagerIPs(ctx)
 	if err != nil {
-		return entities.User{}, fmt.Errorf("failed to initialize multicast network: %w", err)
+		ezlog.Log(ctx).Errorf("Failed to discover ID Manager IPs: %v", err)
+		return entities.User{}, fmt.Errorf("failed to discover ID Manager IPs: %w", err)
 	}
-	defer multicastNet.Close()
 
-	idManagerChan := make(chan IDManagerData, 1)
+	for _, ip := range idManagerIps {
+		ezlog.Log(ctx).Infof("Trying to register with id manager at %s", ip.String())
 
-	// 2: maximum amount of goroutines
-	errChan := make(chan error, 2)
+		user, err := r.performHTTPRequest(ctx, username, sk.PublicKey(), ip.String())
+		if err != nil {
+			ezlog.Log(ctx).Errorf("Failed to register with ID Manager at %s: %v", ip.String(), err)
+			continue
+		}
 
-	go r.broadcastLoop(ctx, multicastNet, errChan)
-	go r.listenForIDManager(ctx, multicastNet, idManagerChan, errChan)
-	go r.tryDefaultIDManager(ctx, idManagerChan)
-
-	select {
-	case <-ctx.Done():
-		return entities.User{}, fmt.Errorf("registration timed out: %w", ctx.Err())
-	case err := <-errChan:
-		return entities.User{}, err
-	case idManager := <-idManagerChan:
-		r.foundIDManager <- struct{}{}
-
-		ezlog.Log(ctx).Infof("Discovered ID Manager at %s", idManager.IP)
-		return r.performHTTPRequest(ctx, username, sk.PublicKey(), idManager.IP.String())
+		return user, nil
 	}
+
+	ezlog.Log(ctx).Error("Failed to register with any discovered ID Manager")
+
+	return entities.User{}, fmt.Errorf("failed to register with any discovered ID Manager")
 }
