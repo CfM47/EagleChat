@@ -1,10 +1,10 @@
 package iftest
 
 import (
+	"eaglechat/apps/client/internal/domain/entities"
 	"sort"
 	"testing"
 
-	"eaglechat/apps/client/internal/domain/entities"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -114,7 +114,7 @@ func runChatTests(t *testing.T, factory RepoFactory) {
 		// Assert
 		require.Len(t, overviews, 1)
 		overview := overviews[0]
-		assert.Equal(t, lastMessage.Content, overview.LastMessage)
+		assert.Equal(t, lastMessage.Content, *overview.LastMessage)
 		assert.True(t, lastMessage.CreatedTime.Equal(overview.Timestamp))
 		assert.Equal(t, userB.ID, overview.Partner.ID)
 	})

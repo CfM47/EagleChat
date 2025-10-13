@@ -17,11 +17,11 @@ func (r *sqliteRepository) SaveMessage(message entities.Message) error {
 		return err
 	}
 
-	var partnerID entities.UserID
+	var partner entities.User
 	if message.Sender.ID == ownProfile.User.ID {
-		partnerID = message.Target.ID
+		partner = message.Target
 	} else {
-		partnerID = message.Sender.ID
+		partner = message.Sender
 	}
 
 	tx, err := r.db.Begin()
@@ -30,24 +30,15 @@ func (r *sqliteRepository) SaveMessage(message entities.Message) error {
 	}
 	defer tx.Rollback()
 
-	// Ensure the sender and target users exist in the user table
-	if err := r.saveUser(tx, message.Sender); err != nil {
-		return err
-	}
-	if err := r.saveUser(tx, message.Target); err != nil {
-		return err
-	}
-
-	// Ensure the chat metadata row exists
-	_, err = tx.Exec(`INSERT OR IGNORE INTO chat (partner_id) VALUES (?);`, partnerID)
-	if err != nil {
+	// Ensure the partner user exist in the user table
+	if err := r.saveUser(tx, partner); err != nil {
 		return err
 	}
 
 	// Insert the message, ignoring if it's a duplicate
 	_, err = tx.Exec(
 		`INSERT OR IGNORE INTO message (message_id, sender_id, partner_id, content, timestamp) VALUES (?, ?, ?, ?, ?);`,
-		message.ID, message.Sender.ID, partnerID, message.Content, message.CreatedTime.Unix(),
+		message.ID, message.Sender.ID, partner.ID, message.Content, message.CreatedTime.Unix(),
 	)
 	if err != nil {
 		return err
@@ -60,6 +51,12 @@ func (r *sqliteRepository) SaveMessage(message entities.Message) error {
 func (r *sqliteRepository) GetChat(partnerID entities.UserID) ([]entities.Message, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
+
+	// First, check if the user exists. If not, we can't have a chat with them.
+	_, err := r.GetUser(partnerID)
+	if err != nil {
+		return nil, err // This will be ErrUserNotFound if they don't exist
+	}
 
 	ownProfile, err := r.GetOwnProfile()
 	if err != nil {

@@ -8,6 +8,8 @@ type AppState int
 const (
 	RegisterState AppState = iota
 	ChatState
+	ProfileState
+	NewContactState
 )
 
 // MessageModel represents a single message for display in the UI.
@@ -21,7 +23,7 @@ type MessageModel struct {
 type InactiveChatModel struct {
 	ID          string
 	Name        string
-	LastMessage string // For the preview text
+	LastMessage *string // For the preview text
 	UnreadCount int
 }
 
@@ -44,10 +46,22 @@ type RegisterViewModel struct {
 	ErrorMessage  string
 }
 
+// NewContactViewModel holds the data for the new contact screen.
+type NewContactViewModel struct {
+	ErrorMessage string
+}
+
+type ProfileViewModel struct {
+	Username string
+	ID       string
+}
+
 // UIModel is the top-level model for the entire application.
 // It clearly defines the current state and provides the specific model for that state.
 type UIModel struct {
-	CurrentState AppState
-	RegisterView RegisterViewModel
-	ChatView     ChatViewModel
+	CurrentState   AppState
+	RegisterView   RegisterViewModel
+	ChatView       ChatViewModel
+	ProfileView    ProfileViewModel
+	NewContactView NewContactViewModel
 }

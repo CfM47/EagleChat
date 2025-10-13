@@ -59,7 +59,7 @@ func (c *Controller) handleUIAction(ctx context.Context, action ui.UserAction) {
 			c.handleRegistration(ctx, act.Name)
 		}
 	case ui.SwitchChatAction:
-		if c.appState == models.ChatState {
+		if c.appState != models.RegisterState {
 			ctx = ezlog.WithComponentPrefix(ctx, "switch-chat")
 			c.handleSwitchChat(ctx, act.ChatID)
 		}
@@ -67,6 +67,21 @@ func (c *Controller) handleUIAction(ctx context.Context, action ui.UserAction) {
 		if c.appState == models.ChatState {
 			ctx = ezlog.WithComponentPrefix(ctx, "send-message")
 			c.handleSendMessage(ctx, act.Content)
+		}
+	case ui.SwitchToProfileAction:
+		if c.appState == models.ChatState {
+			ctx = ezlog.WithComponentPrefix(ctx, "switch-to-profile")
+			c.handleSwitchToProfile(ctx)
+		}
+	case ui.SwitchToNewContactViewAction:
+		if c.appState == models.ChatState {
+			ctx = ezlog.WithComponentPrefix(ctx, "switch-to-new-contact")
+			c.handleSwitchToNewContactView(ctx)
+		}
+	case ui.StartChatWithUserAction:
+		if c.appState == models.NewContactState {
+			ctx = ezlog.WithComponentPrefix(ctx, "start-chat")
+			c.handleStartChatWithUser(ctx, act.UserID)
 		}
 	}
 }
