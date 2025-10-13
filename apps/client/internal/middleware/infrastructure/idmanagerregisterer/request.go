@@ -61,7 +61,7 @@ func (r *registererImpl) performHTTPRequest(ctx context.Context, username string
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode != http.StatusCreated {
 		msg := fmt.Sprintf("ID Manager responded with status: %s", resp.Status)
 		ezlog.Log(ctx).Error(msg)
 		return entities.User{}, errors.New(msg)
