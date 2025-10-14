@@ -1,5 +1,5 @@
 # Stage 1: Build the Go binary
-FROM golang:latest AS builder
+FROM golang:1.25.2 AS builder
 
 # Set the working directory for the build
 WORKDIR /app
@@ -27,7 +27,7 @@ COPY ./common ./common
 RUN CGO_ENABLED=0 GOOS=linux go build -mod=vendor -o /id_manager ./apps/id_manager/cmd/main.go
 
 # Stage 2: Create the final, minimal image
-FROM alpine:latest
+FROM alpine:3.22.2
 
 COPY --from=builder /id_manager /id_manager
 

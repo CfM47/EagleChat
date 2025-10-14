@@ -25,7 +25,7 @@ func NewDNSDiscovery() Discovery {
 
 // DiscoverIDManagerIPs performs a DNS lookup to find the IP addresses of ID Manager tasks.
 func (d *dnsDiscovery) DiscoverIDManagerIPs(ctx context.Context) ([]net.IP, error) {
-	ips, err := net.LookupIP(d.serviceAddress)
+	ips, err := net.LookupIP("id_manager")
 	if err != nil {
 		return nil, fmt.Errorf("dns lookup for %s failed: %w", d.serviceAddress, err)
 	}
