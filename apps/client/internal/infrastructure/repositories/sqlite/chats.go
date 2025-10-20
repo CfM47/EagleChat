@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"eaglechat/apps/client/internal/domain/entities"
 	"eaglechat/apps/client/internal/domain/repositories"
-	"eaglechat/common/simplecrypto/rsa"
+	"eaglechat/common/ezcrypto/rsa"
 	"time"
 )
 

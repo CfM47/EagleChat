@@ -13,7 +13,7 @@ const defaultListenPort = 8081
 func (c *Controller) connectToMiddleware(ctx context.Context, profile entities.OwnProfile) {
 	ezlog.Log(ctx).Infof("Connecting to middleware for user %s (%s)", profile.User.Name, profile.User.ID)
 
-	connectedMiddleware, msgChan, err := c.connector.Connect(ctx, defaultListenPort, profile.User, profile.PrivateKey)
+	connectedMiddleware, msgChan, err := c.connector.Connect(ctx, defaultListenPort, profile)
 	if err != nil {
 		// This is a critical failure, should probably render an error and quit.
 		log.Fatalf("Failed to connect to middleware: %v", err)

@@ -1,8 +1,8 @@
-package simplecrypto
+package ezcrypto
 
 import (
-	"eaglechat/common/simplecrypto/aes"
-	"eaglechat/common/simplecrypto/rsa"
+	"eaglechat/common/ezcrypto/aes"
+	"eaglechat/common/ezcrypto/rsa"
 	"encoding/json"
 	"errors"
 )

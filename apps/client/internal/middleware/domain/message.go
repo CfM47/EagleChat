@@ -3,8 +3,8 @@ package middleware
 import (
 	"context"
 	"eaglechat/apps/client/internal/domain/entities"
+	"eaglechat/common/ezcrypto"
 	"eaglechat/common/ezlog"
-	"eaglechat/common/simplecrypto"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -49,7 +49,7 @@ func (m *Middleware) composeP2PMessage(target entities.User, message entities.Me
 	}
 
 	// 2. Encrypt the message into a secure envelope.
-	envelope, err := simplecrypto.Seal(innerMsgBytes, &m.sk, &target.PublicKey)
+	envelope, err := ezcrypto.Seal(innerMsgBytes, &m.ownProfile.PrivateKey, &target.PublicKey)
 	if err != nil {
 		return middleware_entities.PendingMessage{}, nil, fmt.Errorf("failed to seal message: %w", err)
 	}

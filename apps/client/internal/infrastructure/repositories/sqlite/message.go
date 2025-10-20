@@ -2,7 +2,7 @@ package sqliterepository
 
 import (
 	"eaglechat/apps/client/internal/domain/entities"
-	"eaglechat/common/simplecrypto/rsa"
+	"eaglechat/common/ezcrypto/rsa"
 	"time"
 )
 

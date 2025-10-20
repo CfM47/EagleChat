@@ -1,7 +1,7 @@
 package main
 
 import (
-	"eaglechat/common/simplecrypto/rsa"
+	"eaglechat/common/ezcrypto/rsa"
 	"os"
 )
 

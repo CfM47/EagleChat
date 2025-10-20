@@ -27,6 +27,7 @@ func (m *Middleware) messageSender(ctx context.Context) {
 		case <-m.Done():
 			return
 		case <-m.messageSenderTicker.C:
+			// FIXME: missing trySendPendingMessages
 		}
 	}
 }

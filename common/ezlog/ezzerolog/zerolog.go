@@ -1,4 +1,4 @@
-// Package logging provides the concrete, zerolog-based implementation of the logging service.
+// Package ezzerolog provides the concrete, zerolog-based implementation of the logging service.
 package ezzerolog
 
 import (

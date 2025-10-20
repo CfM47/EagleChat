@@ -1,7 +1,7 @@
 package rsa_test
 
 import (
-	"eaglechat/common/simplecrypto/rsa"
+	"eaglechat/common/ezcrypto/rsa"
 	"os"
 	"path/filepath"
 	"testing"

@@ -1,6 +1,6 @@
 package entities
 
-import "eaglechat/common/simplecrypto/rsa"
+import "eaglechat/common/ezcrypto/rsa"
 
 // OwnProfile represents the client's own user identity, including the private key.
 type OwnProfile struct {

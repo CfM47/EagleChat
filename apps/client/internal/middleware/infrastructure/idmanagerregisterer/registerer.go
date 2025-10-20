@@ -4,9 +4,9 @@ import (
 	"context"
 	"eaglechat/apps/client/internal/domain/entities"
 	"eaglechat/apps/client/internal/domain/services"
+	"eaglechat/common/discovery"
+	"eaglechat/common/ezcrypto/rsa"
 	"eaglechat/common/ezlog"
-	"eaglechat/common/ns"
-	"eaglechat/common/simplecrypto/rsa"
 	"fmt"
 	"net"
 	"time"
@@ -42,7 +42,7 @@ func (r *registererImpl) Register(ctx context.Context, username string, sk rsa.P
 
 	defer cancel()
 
-	idManagerIps, err := ns.NewDNSDiscovery().DiscoverIDManagerIPs(ctx)
+	idManagerIps, err := discovery.NewDNSDiscovery().DiscoverIDManagerIPs(ctx)
 	if err != nil {
 		ezlog.Log(ctx).Errorf("Failed to discover ID Manager IPs: %v", err)
 		return entities.User{}, fmt.Errorf("failed to discover ID Manager IPs: %w", err)

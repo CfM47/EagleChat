@@ -7,13 +7,13 @@ import (
 	message_cache "eaglechat/apps/client/internal/middleware/domain/repositories/messagecache"
 	user_cache "eaglechat/apps/client/internal/middleware/domain/repositories/usercache"
 	middleware_services "eaglechat/apps/client/internal/middleware/domain/services"
-	"eaglechat/common/simplecrypto/rsa"
 	"time"
 )
 
 type Middleware struct {
 	ownPort uint16
-	ownUser entities.User
+
+	ownProfile entities.OwnProfile
 
 	p2pConnections map[entities.UserID]middleware_entities.P2PConnection
 	messageCache   message_cache.MessageCache
@@ -24,8 +24,6 @@ type Middleware struct {
 	knownUsers    user_cache.UserCacheRepository
 
 	receivedMessages chan<- entities.Message
-
-	sk rsa.PrivateKey
 
 	messageSenderTicker *time.Ticker
 	announcementTicker  *time.Ticker

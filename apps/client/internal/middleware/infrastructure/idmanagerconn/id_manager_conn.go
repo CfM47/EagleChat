@@ -2,7 +2,7 @@ package idmanagerconn
 
 import (
 	"eaglechat/apps/client/internal/domain/entities"
-	"eaglechat/common/simplecrypto/rsa"
+	"eaglechat/common/ezcrypto/rsa"
 	"encoding/json"
 	"fmt"
 	"net/http"

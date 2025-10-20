@@ -3,7 +3,7 @@ package services
 import (
 	"eaglechat/apps/client/internal/domain/entities"
 	middleware_entities "eaglechat/apps/client/internal/middleware/domain/entities"
-	"eaglechat/common/simplecrypto/rsa"
+	"eaglechat/common/ezcrypto/rsa"
 )
 
 // IDManagerPool manages listening to new id managers broadcasts in the network

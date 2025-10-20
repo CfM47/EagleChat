@@ -1,8 +1,8 @@
-package simplecrypto_test
+package ezcrypto_test
 
 import (
-	"eaglechat/common/simplecrypto"
-	"eaglechat/common/simplecrypto/rsa"
+	"eaglechat/common/ezcrypto"
+	"eaglechat/common/ezcrypto/rsa"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -18,12 +18,12 @@ func TestHybridEncryption(t *testing.T) {
 
 		// 2. Seal the message
 		originalMessage := []byte("this is a top secret message for bob")
-		envelope, err := simplecrypto.Seal(originalMessage, privAlice, pubBob)
+		envelope, err := ezcrypto.Seal(originalMessage, privAlice, pubBob)
 		assert.NoError(t, err)
 		assert.NotNil(t, envelope)
 
 		// 3. Open the envelope
-		decryptedMessage, senderPubKey, err := simplecrypto.Open(envelope, privBob)
+		decryptedMessage, senderPubKey, err := ezcrypto.Open(envelope, privBob)
 		assert.NoError(t, err)
 		assert.Equal(t, originalMessage, decryptedMessage)
 
@@ -42,13 +42,13 @@ func TestHybridEncryption(t *testing.T) {
 
 		// 2. Alice seals a message for Bob
 		originalMessage := []byte("secret message")
-		envelope, err := simplecrypto.Seal(originalMessage, privAlice, pubBob)
+		envelope, err := ezcrypto.Seal(originalMessage, privAlice, pubBob)
 		assert.NoError(t, err)
 
 		// 3. Charlie intercepts and tries to open it, which should fail
-		_, _, err = simplecrypto.Open(envelope, privCharlie)
+		_, _, err = ezcrypto.Open(envelope, privCharlie)
 		assert.Error(t, err)
-		assert.ErrorIs(t, err, simplecrypto.ErrDecryptKey, "Error should be of type ErrDecryptKey")
+		assert.ErrorIs(t, err, ezcrypto.ErrDecryptKey, "Error should be of type ErrDecryptKey")
 	})
 
 	t.Run("Open Fails With Tampered Signature", func(t *testing.T) {
@@ -60,15 +60,15 @@ func TestHybridEncryption(t *testing.T) {
 
 		// 2. Alice seals a message for Bob
 		originalMessage := []byte("secret message")
-		envelope, err := simplecrypto.Seal(originalMessage, privAlice, pubBob)
+		envelope, err := ezcrypto.Seal(originalMessage, privAlice, pubBob)
 		assert.NoError(t, err)
 
 		// 3. Tamper with the signature
 		envelope.Signature[0] ^= 0xff
 
 		// 4. Bob tries to open it, which should fail signature verification
-		_, _, err = simplecrypto.Open(envelope, privBob)
+		_, _, err = ezcrypto.Open(envelope, privBob)
 		assert.Error(t, err)
-		assert.ErrorIs(t, err, simplecrypto.ErrInvalidSignature, "Error should be of type ErrInvalidSignature")
+		assert.ErrorIs(t, err, ezcrypto.ErrInvalidSignature, "Error should be of type ErrInvalidSignature")
 	})
 }

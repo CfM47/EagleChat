@@ -2,7 +2,7 @@ package entities
 
 import (
 	"eaglechat/apps/client/internal/domain/entities"
-	"eaglechat/common/simplecrypto/rsa"
+	"eaglechat/common/ezcrypto/rsa"
 )
 
 type IDManagerConnection interface {
@@ -11,4 +11,4 @@ type IDManagerConnection interface {
 	GetPendingMessages() ([]PendingMessage, error)
 }
 
-type IDManagerConnBuilder func(IDManagerData, rsa.PrivateKey, entities.UserID) (IDManagerConnection, error)
+type IDManagerConnBuilder func(data IDManagerData, ownSk rsa.PrivateKey, ownID entities.UserID) (IDManagerConnection, error)

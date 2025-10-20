@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"context"
 	"eaglechat/apps/client/internal/domain/entities"
+	"eaglechat/common/ezcrypto"
 	"eaglechat/common/ezlog"
-	"eaglechat/common/simplecrypto"
 	"encoding/json"
 
 	middleware_entities "eaglechat/apps/client/internal/middleware/domain/entities"
@@ -30,7 +30,7 @@ func (m *Middleware) messageReceiver(ctx context.Context) {
 				continue
 			}
 
-			if pendingMsg.Target.TargetID == m.ownUser.ID {
+			if pendingMsg.Target.TargetID == m.ownProfile.User.ID {
 				ezlog.Log(ctx).Infof("Received message for self: %s", pendingMsg.Target.MessageID)
 
 				messageCtx := ezlog.NewLoggerContext("message-for-self-handler")
@@ -48,13 +48,13 @@ func (m *Middleware) messageReceiver(ctx context.Context) {
 // handleMessageForSelf processes a message that is intended for the current user.
 // It decrypts, verifies, and forwards the message to the application.
 func (m *Middleware) handleMessageForSelf(ctx context.Context, pendingMsg middleware_entities.PendingMessage) {
-	var envelope simplecrypto.SecureEnvelope
+	var envelope ezcrypto.SecureEnvelope
 	if err := json.Unmarshal(pendingMsg.Content, &envelope); err != nil {
 		ezlog.Log(ctx).Errorf("Failed to unmarshal secure envelope for own message: %v", err)
 		return
 	}
 
-	plaintext, senderPubKey, err := simplecrypto.Open(&envelope, &m.sk)
+	plaintext, senderPubKey, err := ezcrypto.Open(&envelope, &m.ownProfile.PrivateKey)
 	if err != nil {
 		ezlog.Log(ctx).Errorf("Failed to open secure envelope for own message: %v", err)
 		return

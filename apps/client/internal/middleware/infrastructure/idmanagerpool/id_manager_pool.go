@@ -5,9 +5,9 @@ import (
 	"eaglechat/apps/client/internal/domain/entities"
 	"eaglechat/apps/client/internal/middleware/domain/services"
 	"eaglechat/apps/client/internal/middleware/infrastructure/idmanagerpool/repositories"
+	"eaglechat/common/discovery"
+	"eaglechat/common/ezcrypto/rsa"
 	"eaglechat/common/ezlog"
-	"eaglechat/common/ns"
-	"eaglechat/common/simplecrypto/rsa"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -147,7 +147,7 @@ func (p *idManagerPoolImpl) pollDNSLoop(ctx context.Context) {
 }
 
 func (p *idManagerPoolImpl) pollDNS(ctx context.Context) {
-	ips, err := ns.NewDNSDiscovery().DiscoverIDManagerIPs(ctx)
+	ips, err := discovery.NewDNSDiscovery().DiscoverIDManagerIPs(ctx)
 	if err != nil {
 		ezlog.Log(ctx).Warnf("DNS lookup for ID managers failed: %v", err)
 		return
@@ -197,4 +197,3 @@ func checkHealth(ctx context.Context, ip net.IP, port uint16) bool {
 
 	return true
 }
-
