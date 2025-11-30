@@ -54,7 +54,7 @@ Estos servicios son mayormente reactivos, es decir, sirven peticiones iniciadas 
 
 ### En Clientes
 
-En los clientes existen varias `groutines` (que pueden estar implementadas como hilos o procesos) corriendo de forma concurrente.
+En los clientes existen varias `goroutines` (que pueden estar implementadas como hilos o procesos) corriendo de forma concurrente.
 
 #### Announcer
 
@@ -62,7 +62,7 @@ Este se encarga de anunciar su presencia a los `id managers`, cada cierto interv
 
 #### Message Sender
 
-Este se encarga de periódicamente pedir las IPs de los clientes que son remitentes de mensajes que se cachean en el cliente iniciador, y enviar todos dichos mensajes a su destino, eliminándolos del caché si se conoce que llegaron a su objetivo.
+Este se encarga de periódicamente pedir las IPs de los clientes que son destinatarios de mensajes que se cachean en el cliente iniciador, y enviar todos dichos mensajes a su destino, eliminándolos del caché si se conoce que llegaron a su objetivo.
 
 #### Receiver
 
@@ -70,7 +70,7 @@ Este es simplemente un servidor HTTP, con todos los hilos o procesos necesarios 
 
 #### Interfaz de Usuario
 
-Para esta por supuesto existe una serie de `goroutines` para manejar cosas como las entradas del usuario y seguir siendo reactiva, la implementación está manejada por la biblioteca [tview](github.com/rivo/tview).
+Para esta por supuesto existe una serie de `goroutines` para manejar cosas como las entradas del usuario y seguir siendo reactiva, la implementación está manejada por la biblioteca [tview](https://github.com/rivo/tview).
 
 ## Comunicación
 
@@ -108,8 +108,51 @@ El hecho de que cada `id manager` tiene esencialmente una base de datos llave-va
 
 ## Tolerancia a fallos
 
-el sistema no puede fallar :)
+La tolerancia a fallos del sistema se logra principalmente mediante la replicación distribuida y aleatoria de la información. Cada mensaje pendiente se encuentra almacenado simultáneamente en $m > k$ clientes aleatorios, lo que implica que el sistema puede tolerar la caída de al menos $k$ de estos nodos sin perder disponibilidad: mientras al menos uno permanezca en línea, el mensaje puede seguir siendo reenviado hacia su objetivo.
+
+Se podrá descubrir nuevos peers mientras exista al menos un id manager activo, los clientes pueden seguir registrándose, anunciándose y resolviendo identificadores hacia IPs. El sistema mantiene consistencia eventual entre los id managers, por lo que la falla de algunos de ellos no afecta la operación general.
+
+El caso más crítico ocurre cuando todos los id managers fallan simultáneamente. En tal escenario, los clientes ya conectados pueden seguir comunicándose con pares cuyo IP haya sido previamente cacheado, pero el sistema no puede resolver nuevos identificadores ni registrar nuevos clientes. En esencia, la red continúa funcionando en un modo degradado: el envío de mensajes entre nodos ya descubiertos sigue siendo posible, pero no puede realizarse nuevo descubrimiento ni mantenimiento del estado global hasta que al menos un id manager vuelva a estar disponible.
 
 ## Seguridad
 
-todo muy safe
+La seguridad del sistema se basa en un modelo distribuido donde los `clients` son los únicos responsables de todas las operaciones criptográficas importantes, mientras que los `id managers` actúan únicamente como directorios públicos de llaves e identidades.
+
+### Identidad y autenticación de clientes
+
+Cada cliente funciona como su propio proveedor de identidad: al iniciarse por primera vez, genera de forma local un par de llaves RSA, donde la llave privada actúa como prueba criptográfica de identidad. Esta clave privada nunca sale del dispositivo y no es compartida con ningún otro nodo. La autenticidad de los mensajes entre clientes se garantiza mediante firmas digitales, y la confidencialidad mediante un esquema híbrido RSA + AES.
+
+El almacenamiento de claves públicas en los `id managers` no otorga a estos servidores autoridad criptográfica alguna: únicamente funcionan como directorios de última IP conocida y llave pública asociada a cada identificador. El sistema adopta un esquema Trust On First Use (TOFU), por el cual cada cliente cachea localmente la llave pública de cualquier usuario con el que se comunica por primera vez. Una vez asociada una llave a una identidad, esta no puede cambiar sin activar alertas de seguridad locales, evitando ataques de sustitución de claves tras el primer contacto.
+
+### Confidencialidad y autenticidad de los mensajes
+
+Todos los mensajes enviados entre clientes viajan dentro de un contenedor criptográfico denominado `SecureEnvelope`, que combina:
+
+- Cifrado simétrico (AES–256) para proteger la carga útil con eficiencia.
+- Envoltorio RSA de la clave AES, utilizando la llave pública del destinatario.
+- Firma digital sobre la clave envuelta y el ciphertext.
+
+De esta manera, solo el destinatario que posea la correspondiente llave privada puede descifrar la clave simétrica y recuperar el mensaje. Cualquier modificación del contenido o intento de suplantación se detecta inmediatamente durante la verificación de la firma.
+
+### Seguridad entre ID Managers
+
+Los `id managers`, al intercambiar información para su sincronización eventual, deben autenticarse de forma recíproca para impedir ataques donde un atacante se haga pasar por un servidor legítimo. Para ello, el sistema utiliza un modelo jerárquico con una Autoridad Certificadora (CA) interna:
+
+- Cada `id manager` posee su propio par de llaves RSA.
+- Antes de desplegarse, su llave pública es firmada por la CA del proyecto, generando un certificado.
+- Cada servidor almacena su llave privada, su certificado firmado y la llave pública de la CA.
+
+Durante el intercambio entre `id managers`, estos realizan un handshake similar a TLS, intercambiando certificados y verificando su validez mediante la CA. Además, ejecutan un desafío criptográfico de prueba de posesión de la llave privada, garantizando que ambos extremos son servidores legítimos y no imitadores. Solo tras esta autenticación mutua se inicia la sincronización de datos.
+
+Este mecanismo asegura que un nodo malicioso no pueda integrarse como `id manager` ni alterar la propagación de estado del sistema.
+
+### Supervivencia ante nodos no confiables
+
+Gracias a la replicación distribuida, incluso si un número significativo de clientes o `id managers` se comportan de forma maliciosa o fallan, el sistema mantiene propiedades esenciales:
+
+- Los clientes nunca confían en datos críticos provenientes de otros nodos sin validarlos criptográficamente.
+- Los `id managers` no pueden leer mensajes (que siempre viajan cifrados de extremo a extremo).
+- La replicación aleatoria de mensajes pendientes en múltiples clientes reduce la probabilidad de pérdida de información ante fallas o comportamientos adversarios.
+- El modelo TOFU mitiga ataques de suplantación después del primer intercambio.
+
+Estos mecanismos permiten que la red continúe operando de forma segura en entornos parcialmente comprometidos, y proporcionan una capa razonable de defensa sin introducir complejidad innecesaria en la arquitectura.
