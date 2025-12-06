@@ -2,6 +2,7 @@ package usecases
 
 import (
 	"context"
+	"eaglechat/apps/id_manager/internal/application/ports"
 	"eaglechat/apps/id_manager/internal/domain/entities"
 	"eaglechat/apps/id_manager/internal/domain/repositories/user"
 	"log"
@@ -9,11 +10,12 @@ import (
 )
 
 type RegisterUserUseCase struct {
-	repo user.UserRepository
+	repo     user.UserRepository
+	notifier ports.Notifier
 }
 
-func NewRegisterUserUseCase(repo user.UserRepository) *RegisterUserUseCase {
-	return &RegisterUserUseCase{repo: repo}
+func NewRegisterUserUseCase(repo user.UserRepository, notifier ports.Notifier) *RegisterUserUseCase {
+	return &RegisterUserUseCase{repo: repo, notifier: notifier}
 }
 
 type RegisterUserRequest struct {
@@ -49,6 +51,12 @@ func (uc *RegisterUserUseCase) Execute(ctx context.Context, req *RegisterUserReq
 				log.Printf("An error happened while updating ip")
 			}
 		}
+	}
+
+	if err := uc.notifier.NotifyPeersOfUpdate(ctx); err != nil {
+		// Log the error but don't fail the operation.
+		// The periodic sync will eventually catch up.
+		log.Printf("RegisterUserUseCase: failed to notify peers of update: %v", err)
 	}
 
 	// log.Printf("New user registered with Ip: %s", createdUser.IP.String())

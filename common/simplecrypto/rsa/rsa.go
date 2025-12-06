@@ -8,6 +8,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
+	"fmt"
 )
 
 const KeySize = 4096
@@ -63,14 +64,34 @@ func (pub *PublicKey) ToBytes() ([]byte, error) {
 
 func PrivateKeyFromBytes(pemBytes []byte) (*PrivateKey, error) {
 	block, _ := pem.Decode(pemBytes)
-	if block == nil || block.Type != "RSA PRIVATE KEY" {
+	if block == nil {
 		return nil, errors.New("failed to decode PEM block containing private key")
 	}
-	key, err := x509.ParsePKCS1PrivateKey(block.Bytes)
-	if err != nil {
-		return nil, err
+
+	var parsedKey interface{}
+	var err error
+
+	switch block.Type {
+	case "RSA PRIVATE KEY":
+		// Legacy PKCS#1 format
+		parsedKey, err = x509.ParsePKCS1PrivateKey(block.Bytes)
+	case "PRIVATE KEY":
+		// Modern PKCS#8 format
+		parsedKey, err = x509.ParsePKCS8PrivateKey(block.Bytes)
+	default:
+		return nil, fmt.Errorf("unsupported key type %q", block.Type)
 	}
-	return &PrivateKey{Key: key}, nil
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse private key: %w", err)
+	}
+
+	rsaKey, ok := parsedKey.(*rsa.PrivateKey)
+	if !ok {
+		return nil, errors.New("key is not an RSA private key")
+	}
+
+	return &PrivateKey{Key: rsaKey}, nil
 }
 
 func PublicKeyFromBytes(pemBytes []byte) (*PublicKey, error) {
