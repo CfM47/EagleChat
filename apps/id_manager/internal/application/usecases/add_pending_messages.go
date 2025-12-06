@@ -2,6 +2,7 @@ package usecases
 
 import (
 	"context"
+	"eaglechat/apps/id_manager/internal/application/ports"
 	"eaglechat/apps/id_manager/internal/domain/entities"
 	"eaglechat/apps/id_manager/internal/domain/repositories/pendingmessage"
 	"eaglechat/apps/id_manager/internal/domain/repositories/user"
@@ -13,10 +14,15 @@ import (
 type AddPendingMessagesUseCase struct {
 	pendingMessageRepo pendingmessage.PendingMessageRepository
 	userRepo           user.UserRepository
+	notifier           ports.Notifier
 }
 
-func NewAddPendingMessagesUseCase(pmr pendingmessage.PendingMessageRepository, ur user.UserRepository) *AddPendingMessagesUseCase {
-	return &AddPendingMessagesUseCase{pendingMessageRepo: pmr, userRepo: ur}
+func NewAddPendingMessagesUseCase(
+	pmr pendingmessage.PendingMessageRepository,
+	ur user.UserRepository,
+	notifier ports.Notifier,
+) *AddPendingMessagesUseCase {
+	return &AddPendingMessagesUseCase{pendingMessageRepo: pmr, userRepo: ur, notifier: notifier}
 }
 
 type MessageTarget struct {
@@ -36,6 +42,7 @@ func (uc *AddPendingMessagesUseCase) Execute(ctx context.Context, req *AddPendin
 	}
 
 	log.Printf("starting lop")
+	dataChanged := false
 	for _, mt := range req.MessageTargets {
 		pm, err := uc.pendingMessageRepo.FindByID(mt.MessageID, mt.TargetID)
 		log.Printf("i was able to find by id")
@@ -46,6 +53,7 @@ func (uc *AddPendingMessagesUseCase) Execute(ctx context.Context, req *AddPendin
 					log.Printf("i had an error new pending message")
 					return err
 				}
+				dataChanged = true
 				continue
 			}
 			return err
@@ -58,7 +66,17 @@ func (uc *AddPendingMessagesUseCase) Execute(ctx context.Context, req *AddPendin
 			if err := uc.pendingMessageRepo.Save(pm); err != nil {
 				return err
 			}
+			dataChanged = true
 		}
 	}
+
+	if dataChanged {
+		if err := uc.notifier.NotifyPeersOfUpdate(ctx); err != nil {
+			// Log the error but don't fail the operation.
+			// The periodic sync will eventually catch up.
+			log.Printf("AddPendingMessagesUseCase: failed to notify peers of update: %v", err)
+		}
+	}
+
 	return nil
 }

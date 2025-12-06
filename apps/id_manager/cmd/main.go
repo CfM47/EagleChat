@@ -42,10 +42,23 @@ func main() {
 			Path:    "pending-messages",
 			Handler: container.AddPendingMessagesHandler,
 		},
+		{ // New route for gossip sync
+			Method:  http.MethodGet,
+			Path:    "/sync",
+			Handler: container.SyncDataHandler,
+		},
+		{ // New route for gossip sync notification
+			Method:  http.MethodPost,
+			Path:    "/notify-update",
+			Handler: container.NotifyUpdateHandler,
+		},
 	}
 
 	r := gin.Default()
 	router.RegisterRoutes(r, routes)
+
+	// Start the gossip service
+	container.GossipService.Start()
 
 	// Run server
 	r.Run() // 0.0.0.0:8080

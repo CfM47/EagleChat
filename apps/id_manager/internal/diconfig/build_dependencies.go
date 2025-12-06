@@ -1,13 +1,15 @@
 package diconfig
 
 import (
-	"fmt"
-	"os"
-	"path/filepath"
-
+	"eaglechat/apps/id_manager/internal/application/services/gossip"
 	"eaglechat/apps/id_manager/internal/application/usecases"
 	"eaglechat/apps/id_manager/internal/infrastructure/http/handlers"
 	persistence "eaglechat/apps/id_manager/internal/infrastructure/persistence/json"
+	"eaglechat/common/ns"
+	"fmt"
+	"os"
+	"path/filepath"
+	"time"
 )
 
 type Container struct {
@@ -16,6 +18,9 @@ type Container struct {
 	QueryPendingMessagesHandler handlers.Handler
 	AddPendingMessagesHandler   handlers.Handler
 	RegisterUserHandler         handlers.Handler
+	SyncDataHandler             handlers.Handler
+	NotifyUpdateHandler         handlers.Handler
+	GossipService               *gossip.GossipService
 }
 
 func NewContainer() (*Container, error) {
@@ -24,27 +29,40 @@ func NewContainer() (*Container, error) {
 	if dataDir == "" {
 		dataDir = "./data"
 	}
-
 	if err := os.MkdirAll(dataDir, 0755); err != nil {
-		return nil, fmt.Errorf("error creating data directory: %v", err)
+		return nil, fmt.Errorf("error creating data directory: %w", err)
 	}
 
-	// Persistence route files
-	userFile := filepath.Join(dataDir, "users.json")
-	pendingMessagesFile := filepath.Join(dataDir, "pending_messages.json")
+	// Config
+	ownAddress := "localhost:8080"     // Hardcoded for now
+	gossipPort := "8080"               // Hardcoded for now
+	gossipInterval := 10 * time.Second // Hardcoded for now
 
 	// Initialize repositories
-	userRepo := persistence.NewJSONUserRepository(userFile)
-	pendingMessagesRepo := persistence.NewJSONPendingMessageRepository(pendingMessagesFile)
+	userRepo := persistence.NewJSONUserRepository(filepath.Join(dataDir, "users.json"))
+	pendingMessagesRepo := persistence.NewJSONPendingMessageRepository(filepath.Join(dataDir, "pending_messages.json"))
 
-	// Initialize use cases
+	// Initialize discovery and gossip services
+	dnsDiscovery := ns.NewDNSDiscovery()
+	cachedDiscovery := ns.NewCachingDiscovery(dnsDiscovery, filepath.Join(dataDir, "ip_cache.json"))
+	peerProvider := gossip.NewDnsPeerProvider(cachedDiscovery)
+
+	// Usecases need to be created before gossip service if gossip service depends on them
+	syncDataUC := usecases.NewSyncDataUseCase(userRepo, pendingMessagesRepo)
+
+	// Create gossip service
+	gossipService := gossip.NewGossipService(syncDataUC, peerProvider, ownAddress, gossipPort, gossipInterval)
+
+	// Initialize other use cases that need the notifier
 	queryUserDataUC := usecases.NewQueryUserDataUseCase(userRepo)
 	getRandomUsersUC := usecases.NewGetRandomUsersUseCase(userRepo)
 	queryPendingMessagesUC := usecases.NewQueryPendingMessagesUseCase(pendingMessagesRepo, userRepo)
-	addPendingMessagesUC := usecases.NewAddPendingMessagesUseCase(pendingMessagesRepo, userRepo)
-	registerUserUC := usecases.NewRegisterUserUseCase(userRepo)
+	addPendingMessagesUC := usecases.NewAddPendingMessagesUseCase(pendingMessagesRepo, userRepo, gossipService)
+	registerUserUC := usecases.NewRegisterUserUseCase(userRepo, gossipService)
 
 	// Initialize handlers
+	syncDataHandler := handlers.NewSyncDataHandler(syncDataUC)
+	notifyUpdateHandler := handlers.NewNotifyUpdateHandler(gossipService)
 	getRandomUsersHandler := handlers.NewGetRandomUsersHandler(getRandomUsersUC)
 	queryUserHandler := handlers.NewQueryUserDataHandler(queryUserDataUC)
 	queryPendingMessagesHandler := handlers.NewQueryPendingMessagesHandler(queryPendingMessagesUC)
@@ -57,5 +75,8 @@ func NewContainer() (*Container, error) {
 		QueryPendingMessagesHandler: queryPendingMessagesHandler,
 		AddPendingMessagesHandler:   addPendingMessagesHandler,
 		RegisterUserHandler:         registerUserHandler,
+		SyncDataHandler:             syncDataHandler,
+		NotifyUpdateHandler:         notifyUpdateHandler,
+		GossipService:               gossipService,
 	}, nil
 }
