@@ -56,7 +56,10 @@ func newChatView(app *tview.Application, actionsChan chan<- ui.UserAction) *Chat
 		case 'j':
 			ezlog.Log(ctx).Debug("Chat list: 'j' pressed, moving down.")
 			currentItem := cv.chatList.GetCurrentItem()
-			cv.chatList.SetCurrentItem((currentItem + 1) % cv.chatList.GetItemCount())
+			itemCount := cv.chatList.GetItemCount()
+			if itemCount > 0 {
+				cv.chatList.SetCurrentItem((currentItem + 1) % itemCount)
+			}
 			return nil
 		case 'k':
 			ezlog.Log(ctx).Debug("Chat list: 'k' pressed, moving up.")
