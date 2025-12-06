@@ -1,16 +1,24 @@
 #!/bin/bash
 # This script runs the Docker Compose environment for local testing.
-# It sets the appropriate environment variables based on the selected scenario.
-#
-# Usage:
-#   ./run-compose.sh            (starts the default single-manager scenario)
-#   ./run-compose.sh multi-manager (starts the multi-manager scenario)
+# It AUTOMATICALLY generates the required CA and ID Manager credentials.
 
 set -e
 
-# Navigate to the script's directory to ensure docker-compose is run from the correct context
+# Navigate to the script's directory to ensure correct relative paths
 cd "$(dirname "$0")"
+# Source common functions and variables
+source ./scripts/common.sh
 
+# --- Main Execution ---
+
+# 1. Clean up old credentials and generate new ones
+echo "====> Preparing credentials..."
+rm -rf "$TMP_CERT_DIR"
+generate_ca
+generate_manager_credentials "id-manager-1.eaglechat.local" "$TMP_CERT_DIR/id-manager-1"
+generate_manager_credentials "id-manager-2.eaglechat.local" "$TMP_CERT_DIR/id-manager-2" # For multi-manager scenario
+
+# 2. Determine scenario and run Docker Compose
 SCENARIO=$1
 
 if [ "$SCENARIO" == "multi-manager" ]; then
@@ -25,3 +33,4 @@ fi
 
 echo
 echo "====> Environment is now RUNNING. View status with 'docker-compose ps'"
+echo "====> To stop and clean up credentials, run 'iac/stop-compose.sh'"

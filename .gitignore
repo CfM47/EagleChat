@@ -1,2 +1,4 @@
 .env
 vendor
+tmp_certs
+ca.key
