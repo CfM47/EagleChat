@@ -3,6 +3,7 @@ package x509util
 import (
 	"crypto/rsa"
 	"crypto/x509"
+	"encoding/pem" // New import
 	"errors"
 	"os"
 
@@ -40,11 +41,19 @@ func NewVerifier(caCertPath string) (*Verifier, error) {
 }
 
 // verifyCertificate checks if a given certificate is valid and has been signed by the trusted CA.
-// The certificate is expected to be in DER format. It returns the parsed certificate on success.
-func (v *Verifier) verifyCertificate(certBytes []byte) (*x509.Certificate, error) {
-	cert, err := x509.ParseCertificate(certBytes)
+// The certificate is expected to be in PEM format. It returns the parsed certificate on success.
+func (v *Verifier) verifyCertificate(certPEMBytes []byte) (*x509.Certificate, error) {
+	// First, decode the PEM block to get the raw DER bytes
+	pemBlock, _ := pem.Decode(certPEMBytes)
+	if pemBlock == nil || pemBlock.Type != "CERTIFICATE" {
+		return nil, errors.Join(ErrCertificateParsing, errors.New("invalid PEM block or not a CERTIFICATE type"))
+	}
+	certDERBytes := pemBlock.Bytes
+
+	// Now parse the DER-encoded certificate
+	cert, err := x509.ParseCertificate(certDERBytes)
 	if err != nil {
-		return nil, ErrCertificateParsing
+		return nil, errors.Join(ErrCertificateParsing, err)
 	}
 
 	// Set up verification options

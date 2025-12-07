@@ -29,6 +29,13 @@ services:
       eaglechat-net:
         aliases:
           - id_manager.eaglechat.local
+    secrets:
+      - ca_key
+      - ca_cert
+    environment:
+      CA_KEY_PATH: /run/secrets/ca_key
+      CA_CERT_PATH: /run/secrets/ca_cert
+      COMMON_NAME: id-manager-1.eaglechat.local # Unique common name
 
   id-manager-2:
     build:
@@ -41,6 +48,13 @@ services:
           - id_manager.eaglechat.local
     profiles:
       - "multi-manager"
+    secrets:
+      - ca_key
+      - ca_cert
+    environment:
+      CA_KEY_PATH: /run/secrets/ca_key
+      CA_CERT_PATH: /run/secrets/ca_cert
+      COMMON_NAME: id-manager-2.eaglechat.local # Unique common name
 
   client-1:
     <<: *client-base
@@ -50,3 +64,9 @@ services:
 
   client-3:
     <<: *client-base
+
+secrets:
+  ca_key:
+    file: ../ca.key
+  ca_cert:
+    file: ../ca.crt

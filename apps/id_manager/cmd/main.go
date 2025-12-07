@@ -42,8 +42,13 @@ func main() {
 			Path:    "pending-messages",
 			Handler: container.AddPendingMessagesHandler,
 		},
-		{ // New route for gossip sync
+		{ // New route for public key exchange
 			Method:  http.MethodGet,
+			Path:    "/gossip/pubkey",
+			Handler: container.PubKeyHandler,
+		},
+		{ // Route for secure gossip sync
+			Method:  http.MethodPost,
 			Path:    "/sync",
 			Handler: container.SyncDataHandler,
 		},
