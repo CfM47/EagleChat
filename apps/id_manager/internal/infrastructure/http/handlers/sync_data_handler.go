@@ -2,31 +2,107 @@ package handlers
 
 import (
 	"eaglechat/apps/id_manager/internal/application/usecases"
-	"log" // Temporarily using standard log
+	"eaglechat/apps/id_manager/internal/application/usecases/gossip"
+	"eaglechat/common/simplecrypto"
+	"eaglechat/common/simplecrypto/rsa"
+	"eaglechat/common/simplecrypto/x509util"
+	"encoding/json"
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
-// SyncDataHandler handles GET requests for /sync endpoint.
+// SyncDataHandler handles POST requests for /sync endpoint for secure gossip exchange.
 type SyncDataHandler struct {
-	syncDataUC *usecases.SyncDataUseCase
+	syncDataUC   *usecases.SyncDataUseCase
+	myPrivKey    *rsa.PrivateKey
+	certVerifier *x509util.Verifier
 }
 
 // NewSyncDataHandler creates a new SyncDataHandler.
-func NewSyncDataHandler(syncDataUC *usecases.SyncDataUseCase) *SyncDataHandler {
-	return &SyncDataHandler{syncDataUC: syncDataUC}
+func NewSyncDataHandler(
+	syncDataUC *usecases.SyncDataUseCase,
+	myPrivKey *rsa.PrivateKey,
+	certVerifier *x509util.Verifier,
+) *SyncDataHandler {
+	return &SyncDataHandler{
+		syncDataUC:   syncDataUC,
+		myPrivKey:    myPrivKey,
+		certVerifier: certVerifier,
+	}
 }
 
 // Handle implements the handlers.Handler interface for SyncDataHandler.
 func (h *SyncDataHandler) Handle(c *gin.Context) {
 	ctx := c.Request.Context()
-	data, err := h.syncDataUC.GetAllDataForSync(ctx)
-	if err != nil {
-		log.Printf("SyncDataHandler: Error getting sync data: %v", err)
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+
+	if c.Request.Method != http.MethodPost {
+		c.AbortWithStatusJSON(http.StatusMethodNotAllowed, gin.H{"error": "Method not allowed"})
 		return
 	}
 
-	c.JSON(http.StatusOK, data)
+	var req gossip.GossipExchangeRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Bad Request: " + err.Error()})
+		return
+	}
+
+	// 1. Open the secure envelope from the peer
+	peerGossipBytes, peerPubKeyFromEnvelope, err := simplecrypto.Open(req.Envelope, h.myPrivKey)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized: " + err.Error()})
+		return
+	}
+
+	// 2. Verify the peer's certificate and extract their public key
+	peerPubKeyFromCert, err := h.certVerifier.VerifyAndExtractPublicKey(req.Certificate)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized: " + err.Error()})
+		return
+	}
+
+	// 3. Cross-check that the public key from the certificate matches the one from the envelope.
+	// We can now compare the two keys directly as they are the same type.
+	if peerPubKeyFromEnvelope.Key.N.Cmp(peerPubKeyFromCert.Key.N) != 0 {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized: Public key in envelope does not match public key in certificate"})
+		return
+	}
+
+	// 4. Unmarshal the decrypted gossip payload
+	var peerGossipPayload gossip.GossipPayload
+	if err := json.Unmarshal(peerGossipBytes, &peerGossipPayload); err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Bad Request: Invalid gossip payload"})
+		return
+	}
+
+	// TODO: This is the next point of integration. For now, we log and proceed.
+	log.Printf("SyncDataHandler: Received and verified gossip from peer. KnownPeers: %+v", peerGossipPayload.KnownPeers)
+	// Example of future integration:
+	// syncData := convertGossipPayloadToSyncData(peerGossipPayload)
+	// if err := h.syncDataUC.MergeData(ctx, syncData); err != nil { ... }
+
+
+	// 5. Prepare this node's own gossip payload to send back.
+	myGossipData, err := h.syncDataUC.GetAllDataForSync(ctx)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Internal server error preparing sync data"})
+		return
+	}
+	myGossipPayloadBytes, err := json.Marshal(myGossipData)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Internal server error marshalling own gossip data"})
+		return
+	}
+
+	// 6. Seal the response gossip in a new envelope for the peer
+	responseEnvelope, err := simplecrypto.Seal(myGossipPayloadBytes, h.myPrivKey, peerPubKeyFromEnvelope)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Internal server error sealing response"})
+		return
+	}
+
+	// 7. Send the response
+	response := gossip.GossipExchangeResponse{Envelope: responseEnvelope}
+	c.JSON(http.StatusOK, response)
 }

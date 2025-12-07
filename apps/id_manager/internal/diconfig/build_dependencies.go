@@ -6,6 +6,8 @@ import (
 	"eaglechat/apps/id_manager/internal/infrastructure/http/handlers"
 	persistence "eaglechat/apps/id_manager/internal/infrastructure/persistence/json"
 	"eaglechat/common/ns"
+	"eaglechat/common/simplecrypto/rsa"      // New import
+	"eaglechat/common/simplecrypto/x509util" // New import
 	"fmt"
 	"os"
 	"path/filepath"
@@ -38,6 +40,39 @@ func NewContainer() (*Container, error) {
 	gossipPort := "8080"               // Hardcoded for now
 	gossipInterval := 10 * time.Second // Hardcoded for now
 
+	// --- Load Cryptographic Materials ---
+	privKeyPath := os.Getenv("PRIV_KEY_PATH")
+	if privKeyPath == "" {
+		privKeyPath = "env/private_key.pem" // Assuming default path
+	}
+	myPrivKeyBytes, err := os.ReadFile(privKeyPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read private key from %s: %w", privKeyPath, err)
+	}
+	myPrivKey, err := rsa.PrivateKeyFromBytes(myPrivKeyBytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse private key: %w", err)
+	}
+
+	certPath := os.Getenv("CERT_PATH")
+	if certPath == "" {
+		certPath = "env/id_manager.crt" // Assuming default path for service's own cert
+	}
+	myCert, err := os.ReadFile(certPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read service certificate from %s: %w", certPath, err)
+	}
+
+	caCertPath := os.Getenv("CA_CERT_PATH")
+	if caCertPath == "" {
+		caCertPath = "env/ca.crt" // Assuming default path for CA root cert
+	}
+	certVerifier, err := x509util.NewVerifier(caCertPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create certificate verifier: %w", err)
+	}
+	// --- End Cryptographic Materials Loading ---
+
 	// Initialize repositories
 	userRepo := persistence.NewJSONUserRepository(filepath.Join(dataDir, "users.json"))
 	pendingMessagesRepo := persistence.NewJSONPendingMessageRepository(filepath.Join(dataDir, "pending_messages.json"))
@@ -51,7 +86,16 @@ func NewContainer() (*Container, error) {
 	syncDataUC := usecases.NewSyncDataUseCase(userRepo, pendingMessagesRepo)
 
 	// Create gossip service
-	gossipService := gossip.NewGossipService(syncDataUC, peerProvider, ownAddress, gossipPort, gossipInterval)
+	gossipService := gossip.NewGossipService(
+		syncDataUC,
+		peerProvider,
+		ownAddress,
+		gossipPort,
+		gossipInterval,
+		myPrivKey,       // New param
+		myCert,          // New param
+		certVerifier,    // New param
+	)
 
 	// Initialize other use cases that need the notifier
 	queryUserDataUC := usecases.NewQueryUserDataUseCase(userRepo)
@@ -61,7 +105,11 @@ func NewContainer() (*Container, error) {
 	registerUserUC := usecases.NewRegisterUserUseCase(userRepo, gossipService)
 
 	// Initialize handlers
-	syncDataHandler := handlers.NewSyncDataHandler(syncDataUC)
+	syncDataHandler := handlers.NewSyncDataHandler(
+		syncDataUC,
+		myPrivKey,    // New param
+		certVerifier, // New param
+	)
 	notifyUpdateHandler := handlers.NewNotifyUpdateHandler(gossipService)
 	getRandomUsersHandler := handlers.NewGetRandomUsersHandler(getRandomUsersUC)
 	queryUserHandler := handlers.NewQueryUserDataHandler(queryUserDataUC)
