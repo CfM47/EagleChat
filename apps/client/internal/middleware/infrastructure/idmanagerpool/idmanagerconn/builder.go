@@ -1,28 +1,30 @@
 package idmanagerconn
 
 import (
-	"eaglechat/apps/client/internal/domain/entities"
-	"eaglechat/common/simplecrypto/rsa"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 
+	"eaglechat/apps/client/internal/domain/entities"
 	middleware_entities "eaglechat/apps/client/internal/middleware/domain/entities"
+	managerpool_entities "eaglechat/apps/client/internal/middleware/infrastructure/idmanagerpool/entities"
 )
 
-type idManagerConnectionImpl struct {
-	client  *http.Client
-	baseURL string
-	ownID   entities.UserID
+type idManagerConnectorImpl struct{}
+
+func NewIDManagerConnector() managerpool_entities.IDManagerConnector {
+	return &idManagerConnectorImpl{}
 }
 
-var _ middleware_entities.IDManagerConnection = (*idManagerConnectionImpl)(nil)
+var _ managerpool_entities.IDManagerConnector = (*idManagerConnectorImpl)(nil)
 
-// BuildIDManagerConnection is a constructor for IDManagerConnection.
-func BuildIDManagerConnection(idManagerData middleware_entities.IDManagerData, privateKey rsa.PrivateKey, ownID entities.UserID) (middleware_entities.IDManagerConnection, error) {
-	//  TODO: Use private key for authentication. For now, it's ignored as per requirements.
+// Connect implements entities.IDManagerConnector.
+func (i *idManagerConnectorImpl) Connect(ctx context.Context, ownProfile entities.OwnProfile, IDManagerData middleware_entities.IDManagerData) (managerpool_entities.IDManagerConnection, error) {
+	//  TODO: Use private key for authentication. For now, it's ignored.
+	//  FIXME: add logging
 
-	baseURL := fmt.Sprintf("http://%s:%d", idManagerData.IP.String(), idManagerData.Port)
+	baseURL := fmt.Sprintf("http://%s:%d", IDManagerData.IP.String(), IDManagerData.Port)
 	client := &http.Client{}
 
 	// Health check
@@ -51,6 +53,6 @@ func BuildIDManagerConnection(idManagerData middleware_entities.IDManagerData, p
 	return &idManagerConnectionImpl{
 		client:  client,
 		baseURL: baseURL,
-		ownID:   ownID,
+		ownID:   ownProfile.User.ID,
 	}, nil
 }

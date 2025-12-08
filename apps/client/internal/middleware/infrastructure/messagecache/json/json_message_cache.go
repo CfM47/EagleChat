@@ -1,12 +1,16 @@
 package jsonmessagecache
 
 import (
-	"eaglechat/apps/client/internal/middleware/domain/repositories/messagecache"
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
+
+	"eaglechat/apps/client/internal/domain/entities"
+	"eaglechat/apps/client/internal/middleware/domain/repositories/messagecache"
+	"eaglechat/common/lib"
 
 	middleware_entities "eaglechat/apps/client/internal/middleware/domain/entities"
 )
@@ -16,6 +20,8 @@ type jsonMessageCache struct {
 	path string
 	mu   sync.RWMutex
 }
+
+var _ messagecache.MessageCache = (*jsonMessageCache)(nil)
 
 // cachedMessage is the internal representation of a message in the cache.
 type cachedMessage struct {
@@ -27,7 +33,7 @@ type cachedMessage struct {
 // NewJSONMessageCache creates a new file-based message cache.
 func NewJSONMessageCache(path string) (messagecache.MessageCache, error) {
 	dir := filepath.Dir(path)
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return nil, err
 	}
 
@@ -46,18 +52,32 @@ func (c *jsonMessageCache) readCache() (map[middleware_entities.MessageTarget]ca
 		return nil, err
 	}
 
-	var cache map[middleware_entities.MessageTarget]cachedMessage
-	if err := json.Unmarshal(data, &cache); err != nil {
+	var mappedCache map[string]cachedMessage
+	if err := json.Unmarshal(data, &mappedCache); err != nil {
 		return make(map[middleware_entities.MessageTarget]cachedMessage), nil // Return empty map on corruption
 	}
+
+	cache := lib.MapKeys(mappedCache, func(ts string) middleware_entities.MessageTarget {
+		parts := strings.Split(ts, ":")
+		if len(parts) != 2 {
+			panic("invalid message cache")
+		}
+
+		return middleware_entities.NewMessageTarget(parts[1], entities.UserID(parts[0]))
+	})
+
 	return cache, nil
 }
 
 // writeCache safely serializes and writes the cache to disk.
 func (c *jsonMessageCache) writeCache(cache map[middleware_entities.MessageTarget]cachedMessage) error {
-	data, err := json.MarshalIndent(cache, "", "  ")
+	mappedCache := lib.MapKeys(cache, func(t middleware_entities.MessageTarget) string {
+		return string(t.TargetID) + ":" + t.MessageID
+	})
+
+	data, err := json.MarshalIndent(mappedCache, "", "  ")
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(c.path, data, 0644)
+	return os.WriteFile(c.path, data, 0o644)
 }

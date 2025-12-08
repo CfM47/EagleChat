@@ -1,0 +1,77 @@
+package idmanagerpool
+
+import (
+	"context"
+	"sync"
+
+	"eaglechat/apps/client/internal/domain/entities"
+	middleware_entities "eaglechat/apps/client/internal/middleware/domain/entities"
+	"eaglechat/common/lib"
+)
+
+func (p *idManagerPoolImpl) GetRandomConnectedUsers(ctx context.Context, count int) ([]middleware_entities.UserData, error) {
+	if count <= 0 {
+		return []middleware_entities.UserData{}, nil
+	}
+
+	idManagers := p.repository.GetAll()
+	if len(idManagers) == 0 {
+		return []middleware_entities.UserData{}, nil
+	}
+
+	queryCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	resultsChan := make(chan middleware_entities.UserData, count)
+	var wg sync.WaitGroup
+	wg.Add(len(idManagers))
+
+	for _, data := range idManagers {
+		go func(managerData middleware_entities.IDManagerData) {
+			defer wg.Done()
+
+			if queryCtx.Err() != nil {
+				return
+			}
+
+			connection, err := p.connector.Connect(queryCtx, p.ownProfile, managerData)
+			if err != nil {
+				// Connector logs errors, so we just exit the goroutine.
+				return
+			}
+
+			users, err := connection.GetRandomConnectedUsers(queryCtx, count)
+			if err != nil {
+				// The connection method logs errors, so we just exit.
+				return
+			}
+
+			for _, user := range users {
+				select {
+				case resultsChan <- user:
+				case <-queryCtx.Done():
+					return
+				}
+			}
+		}(data)
+	}
+
+	go func() {
+		wg.Wait()
+		close(resultsChan)
+	}()
+
+	userMap := make(map[entities.UserID]middleware_entities.UserData)
+	for user := range resultsChan {
+		// This check ensures we don't add more than `count` users,
+		// and that we only trigger cancel once.
+		if len(userMap) < count {
+			userMap[user.User.ID] = user
+			if len(userMap) == count {
+				cancel()
+			}
+		}
+	}
+
+	return lib.Values(userMap), nil
+}

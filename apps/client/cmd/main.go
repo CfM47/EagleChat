@@ -46,8 +46,12 @@ func main() {
 }
 
 func setupFallbackLogger() {
-	os.MkdirAll("/data", 0755)
-	file, err := os.OpenFile("/data/client.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	err := os.MkdirAll("/data", 0o755)
+	if err != nil {
+		panic(err)
+	}
+
+	file, err := os.OpenFile("/data/client.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
 	if err != nil {
 		panic(err)
 	}

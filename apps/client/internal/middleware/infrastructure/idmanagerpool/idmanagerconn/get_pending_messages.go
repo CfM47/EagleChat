@@ -1,10 +1,13 @@
 package idmanagerconn
 
 import (
-	"eaglechat/apps/client/internal/domain/entities"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
+
+	"eaglechat/apps/client/internal/domain/entities"
+	"eaglechat/common/ezlog"
 
 	middleware_entities "eaglechat/apps/client/internal/middleware/domain/entities"
 )
@@ -18,11 +21,14 @@ type getPendingMessagesResponse struct {
 	MessageTargets []messageTargetResponse `json:"message_targets"`
 }
 
-func (c *idManagerConnectionImpl) GetPendingMessages() ([]middleware_entities.PendingMessage, error) {
+func (c *idManagerConnectionImpl) GetPendingMessages(ctx context.Context) ([]middleware_entities.PendingMessage, error) {
+	ezlog.Log(ctx).Info("Initiating GetPendingMessages request")
+
 	url := fmt.Sprintf("%s/pending-messages", c.baseURL)
 
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
+		ezlog.Log(ctx).Errorf("Failed to create GetPendingMessages request: %v", err)
 		return nil, err
 	}
 
@@ -30,16 +36,19 @@ func (c *idManagerConnectionImpl) GetPendingMessages() ([]middleware_entities.Pe
 
 	resp, err := c.client.Do(req)
 	if err != nil {
+		ezlog.Log(ctx).Errorf("GetPendingMessages request failed: %v", err)
 		return nil, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
+		ezlog.Log(ctx).Errorf("GetPendingMessages request returned non-OK status: %s", resp.Status)
 		return nil, fmt.Errorf("failed to get pending messages: %s", resp.Status)
 	}
 
 	var response getPendingMessagesResponse
 	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+		ezlog.Log(ctx).Errorf("Failed to decode GetPendingMessages response: %v", err)
 		return nil, err
 	}
 
@@ -49,6 +58,8 @@ func (c *idManagerConnectionImpl) GetPendingMessages() ([]middleware_entities.Pe
 			Target: middleware_entities.NewMessageTarget(mt.MessageID, entities.UserID(mt.UserID)),
 		}
 	}
+
+	ezlog.Log(ctx).Infof("Successfully retrieved %d pending messages", len(result))
 
 	return result, nil
 }

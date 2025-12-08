@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+
 	"eaglechat/apps/client/internal/domain/entities"
 	"eaglechat/common/simplecrypto/rsa"
 )
@@ -13,7 +14,7 @@ type Middleware interface {
 }
 
 type Connector interface {
-	Connect(ctx context.Context, listenPort uint16, userID entities.User, sk rsa.PrivateKey) (Middleware, <-chan entities.Message, error)
+	Connect(ctx context.Context, listenPort uint16, ownProfile entities.OwnProfile) (Middleware, <-chan entities.Message, error)
 }
 
 type Registerer interface {

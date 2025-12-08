@@ -2,12 +2,12 @@ package middleware
 
 import (
 	"context"
+	"errors"
+
 	"eaglechat/apps/client/internal/domain/entities"
 	middleware_entities "eaglechat/apps/client/internal/middleware/domain/entities"
 	usercache "eaglechat/apps/client/internal/middleware/domain/repositories/usercache"
 	"eaglechat/common/ezlog"
-	"errors"
-	"log"
 )
 
 // QueryUser implements domain.Middleware.
@@ -55,30 +55,13 @@ func (m *Middleware) getUserData(ctx context.Context, userIDs []entities.UserID,
 		return foundUsers, nil
 	}
 
-	idManagerConnections, err := m.iDManagerPool.GetAll()
+	queriedUsers, err := m.iDManagerPool.QueryUsers(ctx, missingUsers, ensureConnected)
 	if err != nil {
-		ezlog.Log(ctx).Errorf("ID manager pool error: %v", err)
-		return nil, err
+		ezlog.Log(ctx).Errorf("ID manager pool query error: %v", err)
 	}
 
-	for _, conn := range idManagerConnections {
-		answ, err := conn.QueryUsers(missingUsers, ensureConnected)
-		if err != nil {
-			log.Printf("error querying users: %v", err)
-			continue
-		}
-
-		for id, user := range answ {
-			if err := m.knownUsers.Save(user); err != nil {
-				log.Printf("error caching user data: %v", err)
-			}
-			foundUsers[id] = user
-		}
-
-		// If we found all missing users, we can stop
-		if len(foundUsers) == len(userIDs) {
-			return foundUsers, nil
-		}
+	for id, user := range queriedUsers {
+		foundUsers[id] = user
 	}
 
 	return foundUsers, nil

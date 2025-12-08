@@ -1,4 +1,4 @@
-package services
+package entities
 
 import (
 	"context"
@@ -7,16 +7,15 @@ import (
 	middleware_entities "eaglechat/apps/client/internal/middleware/domain/entities"
 )
 
-type IDManagerPool interface {
+type IDManagerConnection interface {
 	QueryUsers(ctx context.Context, IDs []entities.UserID, omitDisconnected bool) (map[entities.UserID]middleware_entities.UserData, error)
-	NotifyOfPendingMessages(context.Context, []middleware_entities.MessageTarget) error
+	NotifyOfPendingMessages(ctx context.Context, ownID entities.UserID, pendingMessageTargets []middleware_entities.MessageTarget) error
 	GetPendingMessages(context.Context) ([]middleware_entities.PendingMessage, error)
 	GetRandomConnectedUsers(ctx context.Context, count int) ([]middleware_entities.UserData, error)
 
-	Close() error
-	Done() <-chan struct{}
+	BaseURL() string
 }
 
-type IDManagerPoolBuilder interface {
-	Build(ctx context.Context, ownProfile entities.OwnProfile) (IDManagerPool, error)
+type IDManagerConnector interface {
+	Connect(ctx context.Context, ownProfile entities.OwnProfile, IDManagerData middleware_entities.IDManagerData) (IDManagerConnection, error)
 }
