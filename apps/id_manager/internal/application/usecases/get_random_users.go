@@ -17,7 +17,8 @@ func NewGetRandomUsersUseCase(repo user.UserRepository) *GetRandomUsersUseCase {
 }
 
 type GetRandomUsersRequest struct {
-	Amount int
+	Amount    int
+	QuerierID string
 }
 
 type GetRandomUsersResponse struct {
@@ -32,7 +33,7 @@ func (uc *GetRandomUsersUseCase) Execute(ctx context.Context, req *GetRandomUser
 
 	var connectedUsers []*entities.User
 	for _, u := range allUsers {
-		if u.IP != nil {
+		if u.IP != nil && u.ID != req.QuerierID {
 			connectedUsers = append(connectedUsers, u)
 		}
 	}
@@ -45,6 +46,7 @@ func (uc *GetRandomUsersUseCase) Execute(ctx context.Context, req *GetRandomUser
 				Username:  u.Username,
 				PublicKey: u.PublicKeyPEM,
 				IP:        u.IP,
+				ID:        u.ID,
 			}
 		}
 		return &GetRandomUsersResponse{Users: users}, nil
@@ -62,6 +64,7 @@ func (uc *GetRandomUsersUseCase) Execute(ctx context.Context, req *GetRandomUser
 			Username:  u.Username,
 			PublicKey: u.PublicKeyPEM,
 			IP:        u.IP,
+			ID:        u.ID,
 		}
 	}
 

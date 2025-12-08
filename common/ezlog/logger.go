@@ -74,6 +74,16 @@ func NewLoggerContext(component string) context.Context {
 	return context.WithValue(context.Background(), loggerCtxKey, logger)
 }
 
+// WithNewLogger creates a new context that inherits from a parent context
+// and adds a new logger with a new trace ID.
+func WithNewLogger(ctx context.Context, component string) context.Context {
+	if loggerFactory == nil {
+		panic("logger factory not set; call SetLoggerFactory at startup")
+	}
+	logger := loggerFactory.New(component)
+	return context.WithValue(ctx, loggerCtxKey, logger)
+}
+
 // WithComponentPrefix creates a new context that inherits the trace ID from the
 // parent context but uses a new component name for subsequent logs.
 func WithComponentPrefix(ctx context.Context, name string) context.Context {

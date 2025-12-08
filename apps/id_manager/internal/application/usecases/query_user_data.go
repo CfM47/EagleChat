@@ -2,8 +2,9 @@ package usecases
 
 import (
 	"context"
-	"eaglechat/apps/id_manager/internal/domain/repositories/user"
 	"net"
+
+	"eaglechat/apps/id_manager/internal/domain/repositories/user"
 )
 
 type QueryUserDataUseCase struct {
@@ -23,6 +24,7 @@ type UserData struct {
 	Username  string  `json:"username"`
 	PublicKey []byte  `json:"public_key"`
 	IP        *net.IP `json:"ip,omitempty"`
+	ID        string  `json:"id"`
 }
 
 type QueryUserResponse map[string]*UserData
@@ -44,6 +46,7 @@ func (uc *QueryUserDataUseCase) Execute(ctx context.Context, req *QueryUserReque
 			Username:  user.Username,
 			PublicKey: user.PublicKeyPEM,
 			IP:        user.IP,
+			ID:        user.ID,
 		}
 
 		result[id] = data

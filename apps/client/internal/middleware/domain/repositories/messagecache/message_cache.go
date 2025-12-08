@@ -1,9 +1,10 @@
 package messagecache
 
 import (
+	"time"
+
 	"eaglechat/apps/client/internal/domain/entities"
 	middleware_entities "eaglechat/apps/client/internal/middleware/domain/entities"
-	"time"
 )
 
 const DefaultImmunityPeriod = 30 * time.Second
@@ -32,6 +33,7 @@ type MessageCache interface {
 	DeleteImmune(toDelete []middleware_entities.MessageTarget) error
 
 	GetAll() []middleware_entities.PendingMessage
+	GetByTargets(targets []middleware_entities.MessageTarget) []middleware_entities.PendingMessage
 
 	GetTargets() PendingMessageTargetLists
 

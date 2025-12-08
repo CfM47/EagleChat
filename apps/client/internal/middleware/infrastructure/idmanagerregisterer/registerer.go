@@ -2,14 +2,15 @@ package idmanagerregisterer
 
 import (
 	"context"
+	"fmt"
+	"net"
+	"time"
+
 	"eaglechat/apps/client/internal/domain/entities"
 	"eaglechat/apps/client/internal/domain/services"
 	"eaglechat/common/ezlog"
 	"eaglechat/common/ns"
 	"eaglechat/common/simplecrypto/rsa"
-	"fmt"
-	"net"
-	"time"
 )
 
 // registererImpl implements the services.Registerer interface.
@@ -17,8 +18,6 @@ type registererImpl struct {
 	multicastAddress    string
 	idManagerPort       string
 	registrationTimeout time.Duration
-
-	foundIDManager chan struct{}
 }
 
 // NewRegisterer creates a new Registerer.

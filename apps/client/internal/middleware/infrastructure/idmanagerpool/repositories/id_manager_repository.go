@@ -1,6 +1,10 @@
 package repositories
 
-import "eaglechat/apps/client/internal/middleware/domain/entities"
+import (
+	"errors"
+
+	"eaglechat/apps/client/internal/middleware/domain/entities"
+)
 
 // IDManagerRepository defines the contract for storing and retrieving data
 // about discovered ID Manager services. Implementations of this interface are
@@ -15,3 +19,5 @@ type IDManagerRepository interface {
 	// in the repository.
 	GetAll() []entities.IDManagerData
 }
+
+var ErrNoIDManagers = errors.New("no ID managers in repository")

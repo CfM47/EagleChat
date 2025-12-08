@@ -25,8 +25,11 @@ func (h *GetRandomUsersHandler) Handle(c *gin.Context) {
 		return
 	}
 
+	clientID := c.GetHeader("X-Client-ID")
+
 	req := usecases.GetRandomUsersRequest{
-		Amount: amount,
+		Amount:    amount,
+		QuerierID: clientID,
 	}
 
 	resp, err := h.useCase.Execute(c.Request.Context(), &req)

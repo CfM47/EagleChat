@@ -2,13 +2,15 @@ package idmanagerconn
 
 import (
 	"bytes"
-	"eaglechat/apps/client/internal/domain/entities"
-	"eaglechat/common/ezlog"
-	"eaglechat/common/simplecrypto/rsa"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
+
+	"eaglechat/apps/client/internal/domain/entities"
+	"eaglechat/common/ezlog"
+	"eaglechat/common/simplecrypto/rsa"
 
 	middleware_entities "eaglechat/apps/client/internal/middleware/domain/entities"
 )
@@ -25,8 +27,9 @@ type userDataResponse struct {
 
 type queryUsersResponse map[string]userDataResponse
 
-func (c *idManagerConnectionImpl) QueryUsers(userIDs []entities.UserID, omitDisconnected bool) (map[entities.UserID]middleware_entities.UserData, error) {
-	ctx := ezlog.NewLoggerContext("query-users-request")
+func (c *idManagerConnectionImpl) QueryUsers(ctx context.Context, userIDs []entities.UserID, omitDisconnected bool) (map[entities.UserID]middleware_entities.UserData, error) {
+	//  FIXME: add logging on all errors and warnings
+
 	url := fmt.Sprintf("%s/users", c.baseURL)
 
 	stringIDs := make([]string, len(userIDs))
@@ -43,7 +46,7 @@ func (c *idManagerConnectionImpl) QueryUsers(userIDs []entities.UserID, omitDisc
 		return nil, err
 	}
 
-	req, err := http.NewRequest("GET", url, bytes.NewBuffer(jsonBody))
+	req, err := http.NewRequestWithContext(ctx, "GET", url, bytes.NewBuffer(jsonBody))
 	if err != nil {
 		return nil, err
 	}
