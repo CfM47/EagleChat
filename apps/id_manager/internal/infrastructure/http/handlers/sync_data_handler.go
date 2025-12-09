@@ -5,7 +5,6 @@ import (
 	"eaglechat/apps/id_manager/internal/application/usecases/gossip"
 	"eaglechat/common/simplecrypto"
 	"eaglechat/common/simplecrypto/rsa"
-	"eaglechat/common/simplecrypto/x509util"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -15,21 +14,21 @@ import (
 
 // SyncDataHandler handles POST requests for /sync endpoint for secure gossip exchange.
 type SyncDataHandler struct {
-	syncDataUC   *usecases.SyncDataUseCase
-	myPrivKey    *rsa.PrivateKey
-	certVerifier *x509util.Verifier
+	syncDataUC *usecases.SyncDataUseCase
+	myPrivKey  *rsa.PrivateKey
+	caPubKey   *rsa.PublicKey
 }
 
 // NewSyncDataHandler creates a new SyncDataHandler.
 func NewSyncDataHandler(
 	syncDataUC *usecases.SyncDataUseCase,
 	myPrivKey *rsa.PrivateKey,
-	certVerifier *x509util.Verifier,
+	caPubKey *rsa.PublicKey,
 ) *SyncDataHandler {
 	return &SyncDataHandler{
-		syncDataUC:   syncDataUC,
-		myPrivKey:    myPrivKey,
-		certVerifier: certVerifier,
+		syncDataUC: syncDataUC,
+		myPrivKey:  myPrivKey,
+		caPubKey:   caPubKey,
 	}
 }
 
@@ -55,17 +54,23 @@ func (h *SyncDataHandler) Handle(c *gin.Context) {
 		return
 	}
 
-	// 2. Verify the peer's certificate and extract their public key
-	peerPubKeyFromCert, err := h.certVerifier.VerifyAndExtractPublicKey(req.Certificate)
+	// 2. Verify the peer's signature and extract their public key
+	err = rsa.Verify(req.PublicKey, req.Signature, h.caPubKey)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized: " + err.Error()})
 		return
 	}
 
+	peerPubKey, rsaErr := rsa.PublicKeyFromBytes(req.PublicKey)
+	if rsaErr != nil {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized: " + rsaErr.Error()})
+		return
+	}
+
 	// 3. Cross-check that the public key from the certificate matches the one from the envelope.
 	// We can now compare the two keys directly as they are the same type.
-	if peerPubKeyFromEnvelope.Key.N.Cmp(peerPubKeyFromCert.Key.N) != 0 {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized: Public key in envelope does not match public key in certificate"})
+	if peerPubKeyFromEnvelope.Key.N.Cmp(peerPubKey.Key.N) != 0 {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized: Public key in envelope does not match public key in signature"})
 		return
 	}
 
@@ -81,7 +86,6 @@ func (h *SyncDataHandler) Handle(c *gin.Context) {
 	// Example of future integration:
 	// syncData := convertGossipPayloadToSyncData(peerGossipPayload)
 	// if err := h.syncDataUC.MergeData(ctx, syncData); err != nil { ... }
-
 
 	// 5. Prepare this node's own gossip payload to send back.
 	myGossipData, err := h.syncDataUC.GetAllDataForSync(ctx)

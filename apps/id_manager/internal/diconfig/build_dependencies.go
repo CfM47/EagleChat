@@ -7,7 +7,6 @@ import (
 	persistence "eaglechat/apps/id_manager/internal/infrastructure/persistence/json"
 	"eaglechat/common/ns"
 	"eaglechat/common/simplecrypto/rsa"
-	"eaglechat/common/simplecrypto/x509util"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -45,41 +44,45 @@ func NewContainer() (*Container, error) {
 		commonName = ownAddress
 	}
 
-	// --- Load CA Cryptographic Materials ---
-	caPrivKeyPath := os.Getenv("CA_KEY_PATH")
-	if caPrivKeyPath == "" {
-		caPrivKeyPath = "ca.key"
+	// --- Load CA Public Key ---
+	caPubKeyPath := os.Getenv("CA_PUBLIC_KEY_PATH")
+	if caPubKeyPath == "" {
+		caPubKeyPath = "env/ca_public_key.pem"
 	}
-	caKeyPEM, err := os.ReadFile(caPrivKeyPath)
+	caPubKeyBytes, err := os.ReadFile(caPubKeyPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read CA private key from %s: %w", caPrivKeyPath, err)
+		return nil, fmt.Errorf("failed to read CA public key from %s: %w", caPubKeyPath, err)
+	}
+	caPubKey, err := rsa.PublicKeyFromBytes(caPubKeyBytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse CA public key: %w", err)
 	}
 
-	caCertPath := os.Getenv("CA_CERT_PATH")
-	if caCertPath == "" {
-		caCertPath = "ca.crt"
+	// --- Load ID Manager's Private Key and derive Public Key ---
+	idManagerPrivKeyPath := os.Getenv("ID_MANAGER_PRIV_KEY_PATH")
+	if idManagerPrivKeyPath == "" {
+		idManagerPrivKeyPath = "env/private_key.pem"
 	}
-	caCertPEM, err := os.ReadFile(caCertPath)
+	myPrivKeyBytes, err := os.ReadFile(idManagerPrivKeyPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read CA certificate from %s: %w", caCertPath, err)
+		return nil, fmt.Errorf("failed to read ID Manager private key from %s: %w", idManagerPrivKeyPath, err)
 	}
-	certVerifier, err := x509util.NewVerifier(caCertPath)
+	myPrivKey, err := rsa.PrivateKeyFromBytes(myPrivKeyBytes)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create certificate verifier: %w", err)
+		return nil, fmt.Errorf("failed to parse ID Manager private key: %w", err)
 	}
-	// --- End CA Cryptographic Materials Loading ---
+	myPubKey := myPrivKey.PublicKey()
 
-	// --- Generate ID Manager Key Pair and Certificate at Runtime ---
-	myPrivKey, myPubKey, err := rsa.GenerateKeyPair()
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate ID Manager key pair: %w", err)
+	// --- Load ID Manager's Signature (signed by CA) ---
+	idManagerSignaturePath := os.Getenv("ID_MANAGER_SIGNATURE_PATH")
+	if idManagerSignaturePath == "" {
+		idManagerSignaturePath = "env/id_manager_signature.pem"
 	}
-
-	myCert, err := x509util.CreateAndSignCertificate(caCertPEM, caKeyPEM, myPubKey, commonName)
+	mySignature, err := os.ReadFile(idManagerSignaturePath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create and sign ID Manager certificate: %w", err)
+		return nil, fmt.Errorf("failed to read ID Manager signature from %s: %w", idManagerSignaturePath, err)
 	}
-	// --- End Runtime Generation ---
+	// --- End Cryptographic Materials Loading ---
 
 	// Initialize repositories
 	userRepo := persistence.NewJSONUserRepository(filepath.Join(dataDir, "users.json"))
@@ -100,9 +103,10 @@ func NewContainer() (*Container, error) {
 		ownAddress,
 		gossipPort,
 		gossipInterval,
+		myPubKey,
 		myPrivKey,
-		myCert,
-		certVerifier,
+		mySignature,
+		caPubKey,
 	)
 
 	// Initialize other use cases that need the notifier
@@ -113,14 +117,14 @@ func NewContainer() (*Container, error) {
 	registerUserUC := usecases.NewRegisterUserUseCase(userRepo, gossipService)
 
 	// Initialize handlers
-	syncDataHandler := handlers.NewSyncDataHandler(syncDataUC, myPrivKey, certVerifier)
+	syncDataHandler := handlers.NewSyncDataHandler(syncDataUC, myPrivKey, caPubKey)
 	notifyUpdateHandler := handlers.NewNotifyUpdateHandler(gossipService)
 	getRandomUsersHandler := handlers.NewGetRandomUsersHandler(getRandomUsersUC)
 	queryUserHandler := handlers.NewQueryUserDataHandler(queryUserDataUC)
 	queryPendingMessagesHandler := handlers.NewQueryPendingMessagesHandler(queryPendingMessagesUC)
 	addPendingMessagesHandler := handlers.NewAddPendingMessagesHandler(addPendingMessagesUC)
 	registerUserHandler := handlers.NewRegisterUserHandler(registerUserUC)
-	pubKeyHandler := handlers.NewPubKeyHandler(myPrivKey, myCert)
+	pubKeyHandler := handlers.NewPubKeyHandler(myPrivKey, mySignature)
 
 	return &Container{
 		QueryUserHandler:            queryUserHandler,

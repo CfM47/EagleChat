@@ -7,7 +7,6 @@ import (
 	"eaglechat/apps/id_manager/internal/application/usecases/gossip"
 	"eaglechat/common/simplecrypto"
 	"eaglechat/common/simplecrypto/rsa"
-	"eaglechat/common/simplecrypto/x509util"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -29,9 +28,10 @@ type GossipService struct {
 	stopChan     chan bool
 
 	// Crypto dependencies for secure communication
-	myPrivKey    *rsa.PrivateKey
-	myCert       []byte
-	certVerifier *x509util.Verifier
+	myPubKey    *rsa.PublicKey
+	myPrivKey   *rsa.PrivateKey
+	mySignature []byte
+	caPubKey    *rsa.PublicKey
 }
 
 // NewGossipService creates and returns a new GossipService instance.
@@ -41,9 +41,10 @@ func NewGossipService(
 	ownAddress string,
 	gossipPort string,
 	interval time.Duration,
+	myPubKey *rsa.PublicKey,
 	myPrivKey *rsa.PrivateKey,
-	myCert []byte,
-	certVerifier *x509util.Verifier,
+	mySignature []byte,
+	caPubKey *rsa.PublicKey,
 ) *GossipService {
 	return &GossipService{
 		syncUseCase:  syncUseCase,
@@ -53,11 +54,12 @@ func NewGossipService(
 		httpClient: &http.Client{
 			Timeout: 5 * time.Second,
 		},
-		ticker:       time.NewTicker(interval),
-		stopChan:     make(chan bool),
-		myPrivKey:    myPrivKey,
-		myCert:       myCert,
-		certVerifier: certVerifier,
+		ticker:      time.NewTicker(interval),
+		stopChan:    make(chan bool),
+		myPubKey:    myPubKey,
+		myPrivKey:   myPrivKey,
+		mySignature: mySignature,
+		caPubKey:    caPubKey,
 	}
 }
 
@@ -164,25 +166,15 @@ func (s *GossipService) fetchAndVerifyPeerPublicKey(ctx context.Context, peerAdd
 		return nil, fmt.Errorf("failed to decode public key response from %s: %w", pubKeyURL, err)
 	}
 
-	// Verify the signature on the response
-	dataToVerify := append(pubKeyResp.PublicKey, pubKeyResp.Certificate...)
-	peerPubKey, err := rsa.PublicKeyFromBytes(pubKeyResp.PublicKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse peer public key from response: %w", err)
-	}
-	if err := rsa.Verify(dataToVerify, pubKeyResp.Signature, peerPubKey); err != nil {
-		return nil, fmt.Errorf("invalid signature on public key response from %s: %w", pubKeyURL, err)
-	}
-
 	// Verify the peer's certificate against the trusted CA
-	peerPubKeyFromCert, err := s.certVerifier.VerifyAndExtractPublicKey(pubKeyResp.Certificate)
+	err = rsa.Verify(pubKeyResp.PublicKey, pubKeyResp.Signature, s.caPubKey)
 	if err != nil {
 		return nil, fmt.Errorf("peer certificate verification failed for %s: %w", pubKeyURL, err)
 	}
 
-	// Cross-check that the public key from the certificate matches the one from the PublicKeyResponse.
-	if peerPubKey.Key.N.Cmp(peerPubKeyFromCert.Key.N) != 0 {
-		return nil, fmt.Errorf("public key from response does not match public key in certificate for %s", pubKeyURL)
+	peerPubKey, rsaErr := rsa.PublicKeyFromBytes(pubKeyResp.PublicKey)
+	if rsaErr != nil {
+		return nil, fmt.Errorf("failed to deserialize peer public key %s: %w", pubKeyURL, err)
 	}
 
 	return peerPubKey, nil
@@ -207,10 +199,16 @@ func (s *GossipService) performSecureGossipExchange(ctx context.Context, peerAdd
 		return fmt.Errorf("failed to seal gossip envelope for %s: %w", peerAddress, err)
 	}
 
+	myPubKeyBytes, err := s.myPubKey.ToBytes()
+	if err != nil {
+		return fmt.Errorf("failed to get own public key bytes: %w", err)
+	}
+
 	// Prepare the POST request body
 	exchangeReq := gossip.GossipExchangeRequest{
-		Envelope:    envelope,
-		Certificate: s.myCert, // Send our own certificate for the peer to verify
+		Envelope:  envelope,
+		Signature: s.mySignature, // Send our own certificate for the peer to verify
+		PublicKey: myPubKeyBytes,
 	}
 	reqBodyBytes, err := json.Marshal(exchangeReq)
 	if err != nil {
