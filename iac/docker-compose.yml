@@ -29,13 +29,13 @@ services:
       eaglechat-net:
         aliases:
           - id_manager.eaglechat.local
-    secrets:
-      - ca_key
-      - ca_cert
+    volumes:
+      - ./tmp_certs/id-manager-1:/etc/eaglechat/certs:ro
     environment:
-      CA_KEY_PATH: /run/secrets/ca_key
-      CA_CERT_PATH: /run/secrets/ca_cert
-      COMMON_NAME: id-manager-1.eaglechat.local # Unique common name
+      ID_MANAGER_PRIV_KEY_PATH: /etc/eaglechat/certs/private_key.pem
+      ID_MANAGER_SIGNATURE_PATH: /etc/eaglechat/certs/id_manager_signature.pem
+      CA_PUBLIC_KEY_PATH: /etc/eaglechat/certs/ca_public_key.pem
+      COMMON_NAME: id-manager-1.eaglechat.local
 
   id-manager-2:
     build:
@@ -48,13 +48,13 @@ services:
           - id_manager.eaglechat.local
     profiles:
       - "multi-manager"
-    secrets:
-      - ca_key
-      - ca_cert
+    volumes:
+      - ./tmp_certs/id-manager-2:/etc/eaglechat/certs:ro
     environment:
-      CA_KEY_PATH: /run/secrets/ca_key
-      CA_CERT_PATH: /run/secrets/ca_cert
-      COMMON_NAME: id-manager-2.eaglechat.local # Unique common name
+      ID_MANAGER_PRIV_KEY_PATH: /etc/eaglechat/certs/private_key.pem
+      ID_MANAGER_SIGNATURE_PATH: /etc/eaglechat/certs/id_manager_signature.pem
+      CA_PUBLIC_KEY_PATH: /etc/eaglechat/certs/ca_public_key.pem
+      COMMON_NAME: id-manager-2.eaglechat.local
 
   client-1:
     <<: *client-base
@@ -64,9 +64,3 @@ services:
 
   client-3:
     <<: *client-base
-
-secrets:
-  ca_key:
-    file: ../ca.key
-  ca_cert:
-    file: ../ca.crt

@@ -12,11 +12,6 @@ COPY common/go.mod ./common/
 
 COPY vendor ./vendor
 
-
-# Set the workdir to the specific app we are building to download its specific dependencies
-# WORKDIR /app/apps/id_manager
-# RUN go mod download
-
 # Change workdir back to the root to copy all source code
 WORKDIR /app
 COPY ./apps/id_manager ./apps/id_manager
@@ -28,9 +23,6 @@ RUN CGO_ENABLED=0 GOOS=linux go build -mod=vendor -o /id_manager ./apps/id_manag
 
 # Stage 2: Create the final, minimal image
 FROM alpine:3.22.2
-
-# Copy the CA certificate from the build context root into the container
-COPY ca.crt /ca.crt
 
 # Copy the application binary
 COPY --from=builder /id_manager /id_manager

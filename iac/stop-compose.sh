@@ -22,6 +22,10 @@ fi
 
 echo "====> Environment stopped."
 
+echo "====> Cleaning up temporary credentials..."
+rm -rf ./tmp_certs
+echo "Temporary credentials removed."
+
 echo "====> Verifying network cleanup..."
 NETWORK_NAME="iac_eaglechat-net" # Compose prefixes the project name (directory name)
 
