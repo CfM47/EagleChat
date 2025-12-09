@@ -7,9 +7,10 @@ set -e
 NETWORK_NAME="eaglechat-net"
 MANAGER_NAMES=("id-manager-1" "id-manager-2")
 CLIENT_NAMES=("client-1" "client-2" "client-3")
+TMP_CERT_DIR="./tmp_certs"
 
 # --- Navigate to script directory ---
-cd "$(dirname "$0")/.." # Go up to iac directory
+cd "$(dirname "$0")" # Stay in iac/scripts
 
 echo "====> Stopping and removing containers..."
 
@@ -33,4 +34,9 @@ else
   echo "Network '${NETWORK_NAME}' not found, skipping removal."
 fi
 
+echo "\n====> Cleaning up temporary credentials..."
+rm -rf "$TMP_CERT_DIR"
+echo "Temporary credentials removed."
+
 echo "\n====> Environment stopped and cleaned up."
+
