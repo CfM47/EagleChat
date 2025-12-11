@@ -6,7 +6,7 @@ import (
 	"eaglechat/apps/id_manager/internal/domain/entities"
 	"eaglechat/apps/id_manager/internal/domain/repositories/pendingmessage"
 	"eaglechat/apps/id_manager/internal/domain/repositories/user"
-	"log"
+	"eaglechat/common/ezlog"
 	"net"
 	"slices"
 )
@@ -15,6 +15,9 @@ type AddPendingMessagesUseCase struct {
 	pendingMessageRepo pendingmessage.PendingMessageRepository
 	userRepo           user.UserRepository
 	notifier           ports.Notifier
+
+	// Logger context
+	logCtx context.Context
 }
 
 func NewAddPendingMessagesUseCase(
@@ -22,7 +25,7 @@ func NewAddPendingMessagesUseCase(
 	ur user.UserRepository,
 	notifier ports.Notifier,
 ) *AddPendingMessagesUseCase {
-	return &AddPendingMessagesUseCase{pendingMessageRepo: pmr, userRepo: ur, notifier: notifier}
+	return &AddPendingMessagesUseCase{pendingMessageRepo: pmr, userRepo: ur, notifier: notifier, logCtx: ezlog.NewLoggerContext("pending messages usecase")}
 }
 
 type MessageTarget struct {
@@ -41,16 +44,13 @@ func (uc *AddPendingMessagesUseCase) Execute(ctx context.Context, req *AddPendin
 		_ = uc.userRepo.UpdateIP(req.CacherID, req.IP)
 	}
 
-	log.Printf("starting lop")
 	dataChanged := false
 	for _, mt := range req.MessageTargets {
 		pm, err := uc.pendingMessageRepo.FindByID(mt.MessageID, mt.TargetID)
-		log.Printf("i was able to find by id")
 		if err != nil {
 			if err == pendingmessage.ErrPendingMessageNotFound {
 				newPm := entities.NewPendingMessage(mt.MessageID, mt.TargetID, []string{req.CacherID})
 				if err := uc.pendingMessageRepo.Save(newPm); err != nil {
-					log.Printf("i had an error new pending message")
 					return err
 				}
 				dataChanged = true
@@ -74,7 +74,7 @@ func (uc *AddPendingMessagesUseCase) Execute(ctx context.Context, req *AddPendin
 		if err := uc.notifier.NotifyPeersOfUpdate(ctx); err != nil {
 			// Log the error but don't fail the operation.
 			// The periodic sync will eventually catch up.
-			log.Printf("AddPendingMessagesUseCase: failed to notify peers of update: %v", err)
+			ezlog.Log(uc.logCtx).Errorf("AddPendingMessagesUseCase: failed to notify peers of update: %v", err)
 		}
 	}
 

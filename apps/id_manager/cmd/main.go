@@ -2,15 +2,26 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
+	"os"
 
 	"eaglechat/apps/id_manager/internal/diconfig"
 	"eaglechat/apps/id_manager/internal/infrastructure/http/router"
+	"eaglechat/common/ezlog"
+	"eaglechat/common/ezlog/ezzerolog"
 
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
+	setupFallbackLogger()
+
+	log.Print("Setting logger factory...")
+	ezlog.SetLoggerFactory(ezzerolog.NewFactory())
+	ctx := ezlog.NewLoggerContext("main")
+	ezlog.Log(ctx).Info("Logger initialized")
+
 	container, err := diconfig.NewContainer()
 	if err != nil {
 		panic(fmt.Sprintf("error building dependencies: %v", err))
@@ -67,4 +78,17 @@ func main() {
 
 	// Run server
 	r.Run() // 0.0.0.0:8080
+}
+
+func setupFallbackLogger() {
+	err := os.MkdirAll("/data", 0o755)
+	if err != nil {
+		panic(err)
+	}
+
+	file, err := os.OpenFile("/data/id_manager.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+	if err != nil {
+		panic(err)
+	}
+	log.SetOutput(file)
 }
