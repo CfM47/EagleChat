@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"eaglechat/apps/id_manager/internal/application/ports"
-	"log"
+	"eaglechat/common/ezlog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -24,6 +24,9 @@ type notifyUpdateRequest struct {
 
 // Handle implements the handlers.Handler interface for NotifyUpdateHandler.
 func (h *NotifyUpdateHandler) Handle(c *gin.Context) {
+
+	logCtx := ezlog.NewLoggerContext("Notify Update Handler")
+
 	var req notifyUpdateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
@@ -41,7 +44,7 @@ func (h *NotifyUpdateHandler) Handle(c *gin.Context) {
 	go func() {
 		if err := h.notifier.TriggerSyncFromPeer(ctx, req.SourceAddress); err != nil {
 			// Log the error for observability, but we don't need to return an error to the caller.
-			log.Printf("NotifyUpdateHandler: failed to trigger sync from peer %s: %v", req.SourceAddress, err)
+			ezlog.Log(logCtx).Errorf("NotifyUpdateHandler: failed to trigger sync from peer %s: %v", req.SourceAddress, err)
 		}
 	}()
 

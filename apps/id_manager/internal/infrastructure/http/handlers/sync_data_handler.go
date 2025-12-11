@@ -3,10 +3,10 @@ package handlers
 import (
 	"eaglechat/apps/id_manager/internal/application/usecases"
 	"eaglechat/apps/id_manager/internal/application/usecases/gossip"
+	"eaglechat/common/ezlog"
 	"eaglechat/common/simplecrypto"
 	"eaglechat/common/simplecrypto/rsa"
 	"encoding/json"
-	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -35,6 +35,8 @@ func NewSyncDataHandler(
 // Handle implements the handlers.Handler interface for SyncDataHandler.
 func (h *SyncDataHandler) Handle(c *gin.Context) {
 	ctx := c.Request.Context()
+
+	logCtx := ezlog.NewLoggerContext("Sync Data Handler")
 
 	if c.Request.Method != http.MethodPost {
 		c.AbortWithStatusJSON(http.StatusMethodNotAllowed, gin.H{"error": "Method not allowed"})
@@ -81,11 +83,7 @@ func (h *SyncDataHandler) Handle(c *gin.Context) {
 		return
 	}
 
-	// TODO: This is the next point of integration. For now, we log and proceed.
-	log.Printf("SyncDataHandler: Received and verified gossip from peer. KnownPeers: %+v", peerGossipPayload.KnownPeers)
-	// Example of future integration:
-	// syncData := convertGossipPayloadToSyncData(peerGossipPayload)
-	// if err := h.syncDataUC.MergeData(ctx, syncData); err != nil { ... }
+	ezlog.Log(logCtx).Infof("SyncDataHandler: Received and verified gossip from peer. KnownPeers: %+v", peerGossipPayload.KnownPeers)
 
 	// 5. Prepare this node's own gossip payload to send back.
 	myGossipData, err := h.syncDataUC.GetAllDataForSync(ctx)

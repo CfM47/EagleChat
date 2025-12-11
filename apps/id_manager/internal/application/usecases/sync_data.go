@@ -5,7 +5,7 @@ import (
 	"eaglechat/apps/id_manager/internal/domain/entities"
 	"eaglechat/apps/id_manager/internal/domain/repositories/pendingmessage"
 	"eaglechat/apps/id_manager/internal/domain/repositories/user"
-	"log" // Temporarily for internal logging
+	"eaglechat/common/ezlog"
 )
 
 // SyncData represents the aggregate data exchanged between ID Managers for synchronization.
@@ -18,6 +18,9 @@ type SyncData struct {
 type SyncDataUseCase struct {
 	userRepo           user.UserRepository
 	pendingMessageRepo pendingmessage.PendingMessageRepository
+
+	// Logger context
+	logCtx context.Context
 }
 
 // NewSyncDataUseCase creates a new SyncDataUseCase.
@@ -28,6 +31,7 @@ func NewSyncDataUseCase(
 	return &SyncDataUseCase{
 		userRepo:           userRepo,
 		pendingMessageRepo: pendingMessageRepo,
+		logCtx:             ezlog.NewLoggerContext("sync data usecase"),
 	}
 }
 
@@ -58,10 +62,10 @@ func (uc *SyncDataUseCase) MergeData(ctx context.Context, incomingData SyncData)
 			if err == user.ErrUserNotFound {
 				// User does not exist locally, create it.
 				if err := uc.userRepo.Save(incomingUser); err != nil {
-					log.Printf("SyncDataUseCase: failed to save new user %s: %v", incomingUser.ID, err)
+					ezlog.Log(uc.logCtx).Errorf("SyncDataUseCase: failed to save new user %s: %v", incomingUser.ID, err)
 				}
 			} else {
-				log.Printf("SyncDataUseCase: failed to find user %s: %v", incomingUser.ID, err)
+				ezlog.Log(uc.logCtx).Errorf("SyncDataUseCase: failed to find user %s: %v", incomingUser.ID, err)
 			}
 			continue
 		}
@@ -70,7 +74,7 @@ func (uc *SyncDataUseCase) MergeData(ctx context.Context, incomingData SyncData)
 		if incomingUser.LastSeen.After(existingUser.LastSeen) {
 			// Incoming user data is more recent, update local user.
 			if err := uc.userRepo.Update(incomingUser); err != nil {
-				log.Printf("SyncDataUseCase: failed to update user %s: %v", incomingUser.ID, err)
+				ezlog.Log(uc.logCtx).Errorf("SyncDataUseCase: failed to update user %s: %v", incomingUser.ID, err)
 			}
 		}
 		// TODO: If timestamps are equal, we could do a more detailed merge of IPs, but for now,
@@ -87,10 +91,10 @@ func (uc *SyncDataUseCase) MergeData(ctx context.Context, incomingData SyncData)
 			if err == pendingmessage.ErrPendingMessageNotFound {
 				// Pending message does not exist locally, save it.
 				if err := uc.pendingMessageRepo.Save(incomingPM); err != nil {
-					log.Printf("SyncDataUseCase: failed to save new pending message %s/%s: %v", incomingPM.MessageId, incomingPM.TargetId, err)
+					ezlog.Log(uc.logCtx).Errorf("SyncDataUseCase: failed to save new pending message %s/%s: %v", incomingPM.MessageId, incomingPM.TargetId, err)
 				}
 			} else {
-				log.Printf("SyncDataUseCase: failed to find pending message %s/%s: %v", incomingPM.MessageId, incomingPM.TargetId, err)
+				ezlog.Log(uc.logCtx).Errorf("SyncDataUseCase: failed to find pending message %s/%s: %v", incomingPM.MessageId, incomingPM.TargetId, err)
 			}
 			continue
 		}
@@ -118,7 +122,7 @@ func (uc *SyncDataUseCase) MergeData(ctx context.Context, incomingData SyncData)
 		if len(updatedCachers) > len(existingPM.CachersId) {
 			existingPM.CachersId = updatedCachers
 			if err := uc.pendingMessageRepo.Save(existingPM); err != nil { // Save will overwrite, effectively updating
-				log.Printf("SyncDataUseCase: failed to update cachers for pending message %s/%s: %v", incomingPM.MessageId, incomingPM.TargetId, err)
+				ezlog.Log(uc.logCtx).Errorf("SyncDataUseCase: failed to update cachers for pending message %s/%s: %v", incomingPM.MessageId, incomingPM.TargetId, err)
 			}
 		}
 	}

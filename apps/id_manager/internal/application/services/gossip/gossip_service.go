@@ -5,12 +5,12 @@ import (
 	"context"
 	"eaglechat/apps/id_manager/internal/application/usecases"
 	"eaglechat/apps/id_manager/internal/application/usecases/gossip"
+	"eaglechat/common/ezlog"
 	"eaglechat/common/simplecrypto"
 	"eaglechat/common/simplecrypto/rsa"
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"math/rand"
 	"net"
 	"net/http"
@@ -33,6 +33,9 @@ type GossipService struct {
 	myPrivKey   *rsa.PrivateKey
 	mySignature []byte
 	caPubKey    *rsa.PublicKey
+
+	// Logger context
+	logCtx context.Context
 }
 
 // NewGossipService creates and returns a new GossipService instance.
@@ -61,6 +64,7 @@ func NewGossipService(
 		myPrivKey:   myPrivKey,
 		mySignature: mySignature,
 		caPubKey:    caPubKey,
+		logCtx:      ezlog.NewLoggerContext("gossip service"),
 	}
 }
 
@@ -77,13 +81,13 @@ func (s *GossipService) Start() {
 			}
 		}
 	}()
-	log.Println("GossipService started")
+	ezlog.Log(s.logCtx).Info("GossipService started")
 }
 
 // Stop terminates the periodic gossip synchronization.
 func (s *GossipService) Stop() {
 	close(s.stopChan)
-	log.Println("GossipService stopped")
+	ezlog.Log(s.logCtx).Info("GossipService stopped")
 }
 
 // NotifyPeersOfUpdate sends a notification to a random peer to trigger a data pull.
@@ -99,13 +103,13 @@ func (s *GossipService) NotifyPeersOfUpdate(ctx context.Context) error {
 		go func(peerIP string) {
 			defer wg.Done()
 			if err := s.notifyPeer(ctx, peerIP); err != nil {
-				log.Printf("Failed to notify peer %s: %v", peerIP, err)
+				ezlog.Log(s.logCtx).Errorf("Failed to notify peer %s: %v", peerIP, err)
 			}
 		}(peerIP)
 	}
 	wg.Wait()
 
-	log.Printf("Successfully notified of updates to peers %v", peers)
+	ezlog.Log(s.logCtx).Infof("Successfully notified of updates to peers %v", peers)
 	return nil
 }
 
@@ -122,7 +126,7 @@ func (s *GossipService) TriggerSyncFromPeer(ctx context.Context, peerAddress str
 		return fmt.Errorf("phase 2 (secure gossip exchange) failed with %s: %w", peerAddress, err)
 	}
 
-	log.Printf("Successfully completed secure sync with %s", peerAddress)
+	ezlog.Log(s.logCtx).Infof("Successfully completed secure sync with %s", peerAddress)
 	return nil
 }
 
@@ -149,7 +153,7 @@ func (s *GossipService) notifyPeer(ctx context.Context, peerIP string) error {
 		return fmt.Errorf("notification to %s returned non-OK status: %d", notificationURL, resp.StatusCode)
 	}
 
-	log.Printf("Successfully notified peer %s of updates", peerIP)
+	ezlog.Log(s.logCtx).Infof("Successfully notified peer %s of updates", peerIP)
 	return nil
 }
 
@@ -279,19 +283,19 @@ func (s *GossipService) performPeriodicSync() {
 
 	peers, err := s.peerProvider.DiscoverIDManagerIPs(ctx)
 	if err != nil {
-		log.Printf("GossipService: Failed to discover peers: %v", err)
+		ezlog.Log(s.logCtx).Errorf("GossipService: Failed to discover peers: %v", err)
 		return
 	}
 
 	peerIP, ok := s.selectRandomPeer(peers)
 	if !ok {
-		log.Println("GossipService: No valid peers to sync with.")
+		ezlog.Log(s.logCtx).Warn("GossipService: No valid peers to sync with.")
 		return
 	}
 
 	peerAddress := fmt.Sprintf("%s:%s", peerIP, s.gossipPort)
 	if err := s.TriggerSyncFromPeer(ctx, peerAddress); err != nil {
-		log.Printf("GossipService: Periodic sync failed: %v", err)
+		ezlog.Log(s.logCtx).Errorf("GossipService: Periodic sync failed: %v", err)
 	}
 }
 
