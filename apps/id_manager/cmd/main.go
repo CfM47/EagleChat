@@ -55,7 +55,7 @@ func main() {
 		},
 		{ // New route for public key exchange
 			Method:  http.MethodGet,
-			Path:    "/gossip/pubkey",
+			Path:    "/pubkey",
 			Handler: container.PubKeyHandler,
 		},
 		{ // Route for secure gossip sync

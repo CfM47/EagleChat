@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// PubKeyHandler is the HTTP handler for the /gossip/pubkey endpoint.
+// PubKeyHandler is the HTTP handler for the /pubkey endpoint.
 // It implements the handlers.Handler interface for gin.
 type PubKeyHandler struct {
 	privKey   *rsa.PrivateKey
