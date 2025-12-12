@@ -2,7 +2,7 @@ package gossip
 
 import "eaglechat/common/simplecrypto"
 
-// PublicKeyResponse is the structure returned by the /gossip/pubkey endpoint.
+// PublicKeyResponse is the structure returned by the /pubkey endpoint.
 // It includes the peer's public key and a signature of the
 // marshaled PublicKeyAndCert struct to prove ownership.
 type PublicKeyResponse struct {

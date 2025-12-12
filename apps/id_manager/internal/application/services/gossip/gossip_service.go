@@ -161,7 +161,7 @@ func (s *GossipService) notifyPeer(ctx context.Context, peerIP string) error {
 // It fetches the peer's public key and certificate, then verifies them.
 // Returns the trusted peer's public key.
 func (s *GossipService) fetchAndVerifyPeerPublicKey(ctx context.Context, peerAddress string) (*rsa.PublicKey, error) {
-	pubKeyURL := fmt.Sprintf("http://%s/gossip/pubkey", peerAddress)
+	pubKeyURL := fmt.Sprintf("http://%s/pubkey", peerAddress)
 	req, err := http.NewRequestWithContext(ctx, "GET", pubKeyURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create public key request for %s: %w", pubKeyURL, err)
