@@ -2,19 +2,12 @@ package idmanagerpool
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
-	"net"
-	"net/http"
 	"time"
 
 	middleware_entities "eaglechat/apps/client/internal/middleware/domain/entities"
+	"eaglechat/apps/client/internal/middleware/infrastructure/idmanagerverifier"
 	"eaglechat/common/ezlog"
 	"eaglechat/common/ns"
-)
-
-const (
-	checkHealthTimeout = 5 * time.Second
 )
 
 func (p *idManagerPoolImpl) pollDNSLoop(ctx context.Context) {
@@ -49,48 +42,11 @@ func (p *idManagerPoolImpl) pollDNS(ctx context.Context) {
 	}
 
 	for _, ip := range ips {
-		if checkHealth(ctx, ip, middleware_entities.DefaultIDManagerPort) {
-			p.repository.Add(middleware_entities.NewIDManagerData(ip, middleware_entities.DefaultIDManagerPort))
+		pk, _, err := idmanagerverifier.VerifyIDManager(ctx, ip, middleware_entities.DefaultIDManagerPort, p.CAPubkey)
+		if err != nil {
+			ezlog.Log(ctx).Warnf("ID manager verification for DNS looked up id manager failed at ip %s", ip)
 		} else {
-			ezlog.Log(ctx).Warnf("CheckHealth for DNS looked up id manager failed at ip %s", ip)
+			p.repository.Add(middleware_entities.NewIDManagerData(ip, middleware_entities.DefaultIDManagerPort, *pk))
 		}
 	}
-}
-
-func checkHealth(ctx context.Context, ip net.IP, port uint16) bool {
-	url := fmt.Sprintf("http://%s:%d/status", ip.String(), port)
-	ezlog.Log(ctx).Infof("Fetching status from %s", url)
-
-	reqCtx, cancel := context.WithTimeout(ctx, checkHealthTimeout)
-	defer cancel()
-
-	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, url, nil)
-	if err != nil {
-		ezlog.Log(ctx).Warnf("Error creating request for %s: %v", url, err)
-		return false
-	}
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		ezlog.Log(ctx).Warnf("Error fetching status from %s: %v", url, err)
-		return false
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		ezlog.Log(ctx).Warnf("ID Manager at %s returned non-200 status: %s", url, resp.Status)
-		return false
-	}
-
-	var status StatusResponse
-	if err := json.NewDecoder(resp.Body).Decode(&status); err != nil {
-		ezlog.Log(ctx).Warnf("Error decoding metadata from %s: %v", url, err)
-		return false
-	}
-	if status.Status != "ok" {
-		ezlog.Log(ctx).Warnf("ID Manager at %s returned non-ok status: %s", url, status.Status)
-		return false
-	}
-
-	return true
 }

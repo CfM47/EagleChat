@@ -8,6 +8,7 @@ import (
 	"eaglechat/apps/client/internal/middleware/infrastructure/idmanagerpool/idmanagerconn"
 	"eaglechat/apps/client/internal/middleware/infrastructure/idmanagerpool/repositories"
 	"eaglechat/common/ezlog"
+	"eaglechat/common/simplecrypto/rsa"
 )
 
 type idManagerPoolBuilderImpl struct{}
@@ -19,20 +20,21 @@ func NewIDManagerPoolBuilder() services.IDManagerPoolBuilder {
 }
 
 // Build implements services.IDManagerPoolBuilder.
-func (i *idManagerPoolBuilderImpl) Build(ctx context.Context, ownProfile entities.OwnProfile) (services.IDManagerPool, error) {
-	//  FIXME: add logging
+func (i *idManagerPoolBuilderImpl) Build(ctx context.Context, ownProfile entities.OwnProfile, CAPubkey rsa.PublicKey) (services.IDManagerPool, error) {
+	ezlog.Log(ctx).Info("Building ID manager pool")
 
 	repo := repositories.NewInMemoryIDManagerRepository(ExpirationTime)
 
 	pool := &idManagerPoolImpl{
 		repository: repo,
 		ownProfile: ownProfile,
-		connector:  idmanagerconn.NewIDManagerConnector(),
+		connector:  idmanagerconn.NewIDManagerConnector(ownProfile, CAPubkey),
+		CAPubkey:   CAPubkey,
 		quitChan:   make(chan struct{}),
 		doneChan:   make(chan struct{}),
 	}
 
-	pollCtx := ezlog.NewLoggerContext("id-manager-pool-poll-loop")
+	pollCtx := ezlog.WithNewLogger(ctx, "id-manager-pool-poll-loop")
 	go pool.pollDNSLoop(pollCtx)
 
 	return pool, nil

@@ -9,6 +9,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"os"
 )
 
 const KeySize = 4096
@@ -108,6 +109,19 @@ func PublicKeyFromBytes(pemBytes []byte) (*PublicKey, error) {
 		return nil, errors.New("key in PEM block is not an RSA public key")
 	}
 	return &PublicKey{Key: rsaPub}, nil
+}
+
+func PublicKeyFromFile(path string) (*PublicKey, error) {
+	pkBytes, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read public key from %s: %w", path, err)
+	}
+	pk, err := PublicKeyFromBytes(pkBytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse public key: %w", err)
+	}
+
+	return pk, nil
 }
 
 // --- Cryptographic Operations ---

@@ -45,7 +45,7 @@ func (m *Middleware) sendPendingMessages(ctx context.Context) {
 	ezlog.Log(ctx).Info("Attempting to send pending messages...")
 
 	cacheTargets := m.messageCache.GetTargets()
-	onlineUsers, err := m.getPrioritizedOnlineUsers(cacheTargets)
+	onlineUsers, err := m.getPrioritizedOnlineUsers(ctx, cacheTargets)
 	if err != nil {
 		ezlog.Log(ctx).Errorf("Failed to get prioritized online users: %v", err)
 		return
@@ -111,7 +111,7 @@ func (m *Middleware) spreadOwnMessages(ctx context.Context) {
 
 // getPrioritizedOnlineUsers fetches all users that have pending messages and are currently online.
 // The returned list is prioritized, with users associated with immune messages appearing first.
-func (m *Middleware) getPrioritizedOnlineUsers(cacheTargets messagecache.PendingMessageTargetLists) ([]middleware_entities.UserData, error) {
+func (m *Middleware) getPrioritizedOnlineUsers(ctx context.Context, cacheTargets messagecache.PendingMessageTargetLists) ([]middleware_entities.UserData, error) {
 	immuneFirstAllCacheTargets := append(cacheTargets.Immune, cacheTargets.NonImmune...)
 	if len(immuneFirstAllCacheTargets) == 0 {
 		return nil, nil
@@ -125,13 +125,15 @@ func (m *Middleware) getPrioritizedOnlineUsers(cacheTargets messagecache.Pending
 	userIDs := lib.Keys(uniqueUserIDs)
 
 	// Find which of those users are online
-	//  FIXME: remove stump logger
-	onlineUsersData, err := m.getUserData(ezlog.NewLoggerContext("stump"), userIDs, true)
+	onlineUsersData, err := m.getUserData(ctx, userIDs, true)
 	if err != nil {
-		return nil, fmt.Errorf("could not query users: %w", err)
+		msg := "Could not query users"
+		ezlog.Log(ctx).Infof(msg+": %v", err)
+		return nil, fmt.Errorf(msg+": %w", err)
 	}
 
 	if len(onlineUsersData) == 0 {
+		ezlog.Log(ctx).Info("Found no online target users")
 		return nil, nil
 	}
 

@@ -6,6 +6,7 @@ import (
 	"eaglechat/apps/client/internal/domain/services"
 	"eaglechat/apps/client/internal/ui"
 	"eaglechat/apps/client/internal/ui/models"
+	"eaglechat/common/simplecrypto/rsa"
 )
 
 // Controller orchestrates the application logic, acting as a bridge between the
@@ -15,6 +16,7 @@ type Controller struct {
 	registerer services.Registerer
 	connector  services.Connector
 	repository repositories.ClientRepository
+	CAPubkey   rsa.PublicKey
 
 	// Live instances, populated after connecting
 	connectedMiddleware services.Middleware
@@ -32,6 +34,7 @@ func New(
 	registerer services.Registerer,
 	connector services.Connector,
 	repository repositories.ClientRepository,
+	CAPubkey rsa.PublicKey,
 ) *Controller {
 	return &Controller{
 		ui:             ui,
@@ -39,5 +42,6 @@ func New(
 		connector:      connector,
 		repository:     repository,
 		messageChannel: nil,
+		CAPubkey:       CAPubkey,
 	}
 }

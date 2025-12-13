@@ -6,6 +6,7 @@ import (
 	"eaglechat/apps/client/internal/domain/entities"
 	managerpool_entities "eaglechat/apps/client/internal/middleware/infrastructure/idmanagerpool/entities"
 	"eaglechat/apps/client/internal/middleware/infrastructure/idmanagerpool/repositories"
+	"eaglechat/common/simplecrypto/rsa"
 
 	"eaglechat/apps/client/internal/middleware/domain/services"
 )
@@ -21,15 +22,12 @@ type idManagerPoolImpl struct {
 	repository repositories.IDManagerRepository
 	ownProfile entities.OwnProfile
 	connector  managerpool_entities.IDManagerConnector
+	CAPubkey   rsa.PublicKey
 	quitChan   chan struct{}
 	doneChan   chan struct{}
 }
 
 var _ services.IDManagerPool = (*idManagerPoolImpl)(nil)
-
-type StatusResponse struct {
-	Status string `json:"status"`
-}
 
 func (p *idManagerPoolImpl) Close() error {
 	close(p.quitChan)

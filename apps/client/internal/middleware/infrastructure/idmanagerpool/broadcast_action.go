@@ -54,7 +54,7 @@ func singleManagerAction[R any](
 ) {
 	defer wg.Done()
 
-	connection, err := p.connector.Connect(ctx, p.ownProfile, data)
+	connection, err := p.connector.Connect(ctx, data)
 	if err != nil {
 		ezlog.Log(ctx).Errorf("Error connecting to id manager at %s: %v", data.IP, err)
 		return

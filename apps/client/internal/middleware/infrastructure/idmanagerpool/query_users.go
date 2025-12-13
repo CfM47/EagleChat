@@ -31,7 +31,7 @@ func (p *idManagerPoolImpl) QueryUsers(ctx context.Context, IDs []entities.UserI
 				return
 			}
 
-			connection, err := p.connector.Connect(queryCtx, p.ownProfile, managerData)
+			connection, err := p.connector.Connect(queryCtx, managerData)
 			if err != nil {
 				if err != context.Canceled {
 					ezlog.Log(queryCtx).Warnf("Error connecting to id manager at %s: %v", managerData.IP, err)

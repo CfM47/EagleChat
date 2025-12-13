@@ -17,5 +17,5 @@ type IDManagerConnection interface {
 }
 
 type IDManagerConnector interface {
-	Connect(ctx context.Context, ownProfile entities.OwnProfile, IDManagerData middleware_entities.IDManagerData) (IDManagerConnection, error)
+	Connect(ctx context.Context, IDManagerData middleware_entities.IDManagerData) (IDManagerConnection, error)
 }

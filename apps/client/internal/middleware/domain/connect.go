@@ -10,6 +10,7 @@ import (
 	user_cache "eaglechat/apps/client/internal/middleware/domain/repositories/usercache"
 	middleware_services "eaglechat/apps/client/internal/middleware/domain/services"
 	"eaglechat/common/ezlog"
+	"eaglechat/common/simplecrypto/rsa"
 )
 
 type Connector struct {
@@ -44,12 +45,12 @@ func NewConnector(
 	}
 }
 
-func (c Connector) Connect(ctx context.Context, listenPort uint16, ownProfile entities.OwnProfile) (services.Middleware, <-chan entities.Message, error) {
+func (c Connector) Connect(ctx context.Context, listenPort uint16, ownProfile entities.OwnProfile, CAPubkey rsa.PublicKey) (services.Middleware, <-chan entities.Message, error) {
 	ezlog.Log(ctx).Infof("Connecting as user %s on port %d", ownProfile.User.Name, listenPort)
 	defer ezlog.Log(ctx).Info("Connector finished")
 
 	ezlog.Log(ctx).Info("Building ID Manager Pool")
-	iDManagerPool, err := c.iDManagerPoolBuilder.Build(ctx, ownProfile)
+	iDManagerPool, err := c.iDManagerPoolBuilder.Build(ctx, ownProfile, CAPubkey)
 	if err != nil {
 		return &Middleware{}, nil, err
 	}

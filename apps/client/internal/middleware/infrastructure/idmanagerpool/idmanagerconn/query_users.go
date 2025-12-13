@@ -28,9 +28,8 @@ type userDataResponse struct {
 type queryUsersResponse map[string]userDataResponse
 
 func (c *idManagerConnectionImpl) QueryUsers(ctx context.Context, userIDs []entities.UserID, omitDisconnected bool) (map[entities.UserID]middleware_entities.UserData, error) {
-	//  FIXME: add logging on all errors and warnings
-
 	url := fmt.Sprintf("%s/users", c.baseURL)
+	ezlog.Log(ctx).Infof("Querying users to %s", url)
 
 	stringIDs := make([]string, len(userIDs))
 	for i, id := range userIDs {
@@ -43,11 +42,13 @@ func (c *idManagerConnectionImpl) QueryUsers(ctx context.Context, userIDs []enti
 
 	jsonBody, err := json.Marshal(requestBody)
 	if err != nil {
+		ezlog.Log(ctx).Errorf("Failed to marshal request: %v", err)
 		return nil, err
 	}
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, bytes.NewBuffer(jsonBody))
 	if err != nil {
+		ezlog.Log(ctx).Errorf("Failed to create request: %v", err)
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
@@ -57,6 +58,7 @@ func (c *idManagerConnectionImpl) QueryUsers(ctx context.Context, userIDs []enti
 
 	resp, err := c.client.Do(req)
 	if err != nil {
+		ezlog.Log(ctx).Errorf("Failed to perform request: %v", err)
 		return nil, err
 	}
 	defer resp.Body.Close()
