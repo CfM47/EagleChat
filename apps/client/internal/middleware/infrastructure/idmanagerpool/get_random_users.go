@@ -34,7 +34,7 @@ func (p *idManagerPoolImpl) GetRandomConnectedUsers(ctx context.Context, count i
 				return
 			}
 
-			connection, err := p.connector.Connect(queryCtx, p.ownProfile, managerData)
+			connection, err := p.connector.Connect(queryCtx, managerData)
 			if err != nil {
 				// Connector logs errors, so we just exit the goroutine.
 				return

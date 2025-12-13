@@ -3,7 +3,6 @@ package idmanagerregisterer
 import (
 	"context"
 	"fmt"
-	"net"
 	"time"
 
 	"eaglechat/apps/client/internal/domain/entities"
@@ -21,6 +20,7 @@ type registererImpl struct {
 }
 
 // NewRegisterer creates a new Registerer.
+// FIXME: make request/response use public key verification and for encryption
 func NewRegisterer(multicastAddress, idManagerPort string, timeout time.Duration) services.Registerer {
 	return &registererImpl{
 		multicastAddress:    multicastAddress,
@@ -29,13 +29,8 @@ func NewRegisterer(multicastAddress, idManagerPort string, timeout time.Duration
 	}
 }
 
-type IDManagerData struct {
-	IP   net.IP
-	Port uint16
-}
-
 // Register orchestrates the discovery and HTTP registration process.
-func (r *registererImpl) Register(ctx context.Context, username string, sk rsa.PrivateKey) (entities.User, error) {
+func (r *registererImpl) Register(ctx context.Context, username string, sk rsa.PrivateKey, CAPubkey rsa.PublicKey) (entities.User, error) {
 	ctx, cancel := context.WithTimeout(ctx, r.registrationTimeout)
 	ezlog.Log(ctx).Info("Beginning registration process")
 

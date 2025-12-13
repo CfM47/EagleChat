@@ -11,6 +11,9 @@ x-client-base: &client-base
     - id-manager-1
   environment:
     ID_MANAGER_ENDPOINTS: ${ID_MANAGER_ENDPOINTS}
+    CA_PUBLIC_KEY_PATH: /etc/eaglechat/certs/ca_public_key.pem
+  volumes:
+    - ./tmp_certs/id-manager-1:/etc/eaglechat/certs:ro
   stdin_open: true
   tty: true
 

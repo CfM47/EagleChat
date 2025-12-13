@@ -1,13 +1,14 @@
 package main
 
 import (
+	"log"
+	"os"
+
 	"eaglechat/apps/client/internal/diconfig"
 	sqliterepository "eaglechat/apps/client/internal/infrastructure/repositories/sqlite"
 	"eaglechat/apps/client/internal/ui/controller"
 	"eaglechat/common/ezlog"
 	"eaglechat/common/ezlog/ezzerolog"
-	"log"
-	"os"
 )
 
 const (
@@ -30,13 +31,13 @@ func main() {
 		panic(err)
 	}
 
-	tui, connector, registerer, err := diconfig.BuildMiddlewareDeps(idManagerPort)
+	deps, err := diconfig.BuildMiddlewareDeps(idManagerPort)
 	if err != nil {
 		ezlog.Log(ctx).Errorf("error creating middleware dependencies: %v", err)
 		panic(err)
 	}
 
-	controller := controller.New(tui, registerer, connector, clientRepo)
+	controller := controller.New(deps.TUI, deps.MiddlewareRegisterer, deps.MiddlewareConnector, clientRepo, deps.CAPubkey)
 
 	err = controller.Run()
 	if err != nil {

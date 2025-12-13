@@ -1,16 +1,17 @@
 package diconfig
 
 import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"time"
+
 	"eaglechat/apps/id_manager/internal/application/services/gossip"
 	"eaglechat/apps/id_manager/internal/application/usecases"
 	"eaglechat/apps/id_manager/internal/infrastructure/http/handlers"
 	persistence "eaglechat/apps/id_manager/internal/infrastructure/persistence/json"
 	"eaglechat/common/ns"
 	"eaglechat/common/simplecrypto/rsa"
-	"fmt"
-	"os"
-	"path/filepath"
-	"time"
 )
 
 type Container struct {
@@ -31,7 +32,7 @@ func NewContainer() (*Container, error) {
 	if dataDir == "" {
 		dataDir = "./data"
 	}
-	if err := os.MkdirAll(dataDir, 0755); err != nil {
+	if err := os.MkdirAll(dataDir, 0o755); err != nil {
 		return nil, fmt.Errorf("error creating data directory: %w", err)
 	}
 
@@ -49,13 +50,9 @@ func NewContainer() (*Container, error) {
 	if caPubKeyPath == "" {
 		caPubKeyPath = "env/ca_public_key.pem"
 	}
-	caPubKeyBytes, err := os.ReadFile(caPubKeyPath)
+	caPubKey, err := rsa.PublicKeyFromFile(caPubKeyPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read CA public key from %s: %w", caPubKeyPath, err)
-	}
-	caPubKey, err := rsa.PublicKeyFromBytes(caPubKeyBytes)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse CA public key: %w", err)
+		return nil, err
 	}
 
 	// --- Load ID Manager's Private Key and derive Public Key ---

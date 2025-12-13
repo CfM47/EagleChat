@@ -5,6 +5,7 @@ import (
 
 	"eaglechat/apps/client/internal/domain/entities"
 	middleware_entities "eaglechat/apps/client/internal/middleware/domain/entities"
+	"eaglechat/common/simplecrypto/rsa"
 )
 
 type IDManagerPool interface {
@@ -18,5 +19,5 @@ type IDManagerPool interface {
 }
 
 type IDManagerPoolBuilder interface {
-	Build(ctx context.Context, ownProfile entities.OwnProfile) (IDManagerPool, error)
+	Build(ctx context.Context, ownProfile entities.OwnProfile, CAPubkey rsa.PublicKey) (IDManagerPool, error)
 }
