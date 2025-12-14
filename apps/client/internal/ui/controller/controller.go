@@ -16,7 +16,7 @@ type Controller struct {
 	registerer services.Registerer
 	connector  services.Connector
 	repository repositories.ClientRepository
-	CAPubkey   rsa.PublicKey
+	CAPubkey   *rsa.PublicKey
 
 	// Live instances, populated after connecting
 	connectedMiddleware services.Middleware
@@ -34,7 +34,7 @@ func New(
 	registerer services.Registerer,
 	connector services.Connector,
 	repository repositories.ClientRepository,
-	CAPubkey rsa.PublicKey,
+	CAPubkey *rsa.PublicKey,
 ) *Controller {
 	return &Controller{
 		ui:             ui,

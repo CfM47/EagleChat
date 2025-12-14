@@ -14,9 +14,9 @@ type Middleware interface {
 }
 
 type Connector interface {
-	Connect(ctx context.Context, listenPort uint16, ownProfile entities.OwnProfile, CAPubkey rsa.PublicKey) (Middleware, <-chan entities.Message, error)
+	Connect(ctx context.Context, listenPort uint16, ownProfile entities.OwnProfile, CAPubkey *rsa.PublicKey) (Middleware, <-chan entities.Message, error)
 }
 
 type Registerer interface {
-	Register(ctx context.Context, username string, sk rsa.PrivateKey, CAPubkey rsa.PublicKey) (entities.User, error)
+	Register(ctx context.Context, username string, sk rsa.PrivateKey, CAPubkey *rsa.PublicKey) (entities.User, error)
 }

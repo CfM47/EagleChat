@@ -19,5 +19,5 @@ type IDManagerPool interface {
 }
 
 type IDManagerPoolBuilder interface {
-	Build(ctx context.Context, ownProfile entities.OwnProfile, CAPubkey rsa.PublicKey) (IDManagerPool, error)
+	Build(ctx context.Context, ownProfile entities.OwnProfile, CAPubkey *rsa.PublicKey) (IDManagerPool, error)
 }

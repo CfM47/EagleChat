@@ -22,7 +22,7 @@ type idManagerPoolImpl struct {
 	repository repositories.IDManagerRepository
 	ownProfile entities.OwnProfile
 	connector  managerpool_entities.IDManagerConnector
-	CAPubkey   rsa.PublicKey
+	CAPubkey   *rsa.PublicKey
 	quitChan   chan struct{}
 	doneChan   chan struct{}
 }
