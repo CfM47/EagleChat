@@ -11,9 +11,10 @@ x-client-base: &client-base
     - id-manager-1
   environment:
     ID_MANAGER_ENDPOINTS: ${ID_MANAGER_ENDPOINTS}
-    CA_PUBLIC_KEY_PATH: /etc/eaglechat/certs/ca_public_key.pem
+    CA_PUBLIC_KEY_PATH: /etc/eaglechat/common_ca/ca_public_key.pem
   volumes:
     - ./tmp_certs/id-manager-1:/etc/eaglechat/certs:ro
+    - ./tmp_certs/common_ca:/etc/eaglechat/common_ca:ro
   stdin_open: true
   tty: true
 
@@ -34,10 +35,11 @@ services:
           - id_manager.eaglechat.local
     volumes:
       - ./tmp_certs/id-manager-1:/etc/eaglechat/certs:ro
+      - ./tmp_certs/common_ca:/etc/eaglechat/common_ca:ro
     environment:
       ID_MANAGER_PRIV_KEY_PATH: /etc/eaglechat/certs/private_key.pem
       ID_MANAGER_SIGNATURE_PATH: /etc/eaglechat/certs/id_manager_signature.pem
-      CA_PUBLIC_KEY_PATH: /etc/eaglechat/certs/ca_public_key.pem
+      CA_PUBLIC_KEY_PATH: /etc/eaglechat/common_ca/ca_public_key.pem
       COMMON_NAME: id-manager-1.eaglechat.local
 
   id-manager-2:
@@ -53,10 +55,11 @@ services:
       - "multi-manager"
     volumes:
       - ./tmp_certs/id-manager-2:/etc/eaglechat/certs:ro
+      - ./tmp_certs/common_ca:/etc/eaglechat/common_ca:ro
     environment:
       ID_MANAGER_PRIV_KEY_PATH: /etc/eaglechat/certs/private_key.pem
       ID_MANAGER_SIGNATURE_PATH: /etc/eaglechat/certs/id_manager_signature.pem
-      CA_PUBLIC_KEY_PATH: /etc/eaglechat/certs/ca_public_key.pem
+      CA_PUBLIC_KEY_PATH: /etc/eaglechat/common_ca/ca_public_key.pem
       COMMON_NAME: id-manager-2.eaglechat.local
 
   client-1:
