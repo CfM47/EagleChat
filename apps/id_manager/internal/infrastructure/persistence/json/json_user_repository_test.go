@@ -3,6 +3,7 @@ package json_test
 import (
 	repository "eaglechat/apps/id_manager/internal/domain/repositories/user"
 	json_user_repository "eaglechat/apps/id_manager/internal/infrastructure/persistence/json"
+	"eaglechat/common/clock"
 	"path/filepath"
 	"testing"
 )
@@ -14,7 +15,7 @@ func TestJsonUserRepository(t *testing.T) {
 		tempDir := t.TempDir()
 		filePath := filepath.Join(tempDir, "test_db.json")
 
-		repo := json_user_repository.NewJSONUserRepository(filePath)
+		repo := json_user_repository.NewJSONUserRepository(filePath, clock.NewClock())
 
 		cleanup := func() {} // No-op, since t.TempDir() handles cleanup
 

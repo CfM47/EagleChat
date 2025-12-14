@@ -5,6 +5,7 @@ import (
 	"eaglechat/apps/id_manager/internal/application/ports"
 	"eaglechat/apps/id_manager/internal/domain/entities"
 	"eaglechat/apps/id_manager/internal/domain/repositories/user"
+	"eaglechat/common/clock"
 	"eaglechat/common/ezlog"
 	"net"
 )
@@ -12,13 +13,13 @@ import (
 type RegisterUserUseCase struct {
 	repo     user.UserRepository
 	notifier ports.Notifier
-
+	clock    clock.Clock
 	// Logger context
 	logCtx context.Context
 }
 
-func NewRegisterUserUseCase(repo user.UserRepository, notifier ports.Notifier) *RegisterUserUseCase {
-	return &RegisterUserUseCase{repo: repo, notifier: notifier, logCtx: ezlog.NewLoggerContext("register user usecase")}
+func NewRegisterUserUseCase(repo user.UserRepository, notifier ports.Notifier, clock clock.Clock) *RegisterUserUseCase {
+	return &RegisterUserUseCase{repo: repo, notifier: notifier, clock: clock, logCtx: ezlog.NewLoggerContext("register user usecase")}
 }
 
 type RegisterUserRequest struct {
@@ -34,7 +35,7 @@ type RegisterUserResponse struct {
 func (uc *RegisterUserUseCase) Execute(ctx context.Context, req *RegisterUserRequest) (*RegisterUserResponse, error) {
 	ezlog.Log(uc.logCtx).Infof("RegisterUserUseCase: Executing with username: %s", req.Username)
 	// The ID is left empty because the repository is responsible for generating it.
-	newUser := entities.NewUser("", req.Username, req.PublicKey)
+	newUser := entities.NewUser("", req.Username, req.PublicKey, uc.clock.Now())
 
 	createdUser, err := uc.repo.Create(newUser)
 	if err != nil {
@@ -61,8 +62,6 @@ func (uc *RegisterUserUseCase) Execute(ctx context.Context, req *RegisterUserReq
 		// The periodic sync will eventually catch up.
 		ezlog.Log(uc.logCtx).Errorf("RegisterUserUseCase: failed to notify peers of update: %v", err)
 	}
-
-	// log.Printf("New user registered with Ip: %s", createdUser.IP.String())
 
 	return &RegisterUserResponse{Id: createdUser.ID}, nil
 }
