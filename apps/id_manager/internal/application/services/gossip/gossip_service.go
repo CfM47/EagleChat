@@ -90,6 +90,10 @@ func (s *GossipService) Stop() {
 	ezlog.Log(s.logCtx).Info("GossipService stopped")
 }
 
+func (s *GossipService) GetPort() string {
+	return s.gossipPort
+}
+
 // NotifyPeersOfUpdate sends a notification to a random peer to trigger a data pull.
 func (s *GossipService) NotifyPeersOfUpdate(ctx context.Context) error {
 	peers, err := s.peerProvider.DiscoverIDManagerIPs(ctx)
@@ -97,8 +101,10 @@ func (s *GossipService) NotifyPeersOfUpdate(ctx context.Context) error {
 		return fmt.Errorf("failed to discover peers for notification: %w", err)
 	}
 
+	validPeers := s.getAllValidPeers(peers)
+
 	var wg sync.WaitGroup
-	for _, peerIP := range s.getAllValidPeers(peers) {
+	for _, peerIP := range validPeers {
 		wg.Add(1)
 		go func(peerIP string) {
 			defer wg.Done()
@@ -109,7 +115,7 @@ func (s *GossipService) NotifyPeersOfUpdate(ctx context.Context) error {
 	}
 	wg.Wait()
 
-	ezlog.Log(s.logCtx).Infof("Successfully notified of updates to peers %v", peers)
+	ezlog.Log(s.logCtx).Infof("Successfully notified of updates to peers %v", validPeers)
 	return nil
 }
 
@@ -131,7 +137,7 @@ func (s *GossipService) TriggerSyncFromPeer(ctx context.Context, peerAddress str
 }
 
 func (s *GossipService) notifyPeer(ctx context.Context, peerIP string) error {
-	notificationURL := fmt.Sprintf("http://%s:%s/notify-update", peerIP, s.gossipPort)
+	notificationURL := fmt.Sprintf("http://%s:%s/notify-update", peerIP, s.GetPort())
 	requestBody, err := json.Marshal(map[string]string{"source_address": s.ownAddress})
 	if err != nil {
 		return fmt.Errorf("failed to marshal notification request body: %w", err)
@@ -293,7 +299,7 @@ func (s *GossipService) performPeriodicSync() {
 		return
 	}
 
-	peerAddress := fmt.Sprintf("%s:%s", peerIP, s.gossipPort)
+	peerAddress := fmt.Sprintf("%s:%s", peerIP, s.GetPort())
 	if err := s.TriggerSyncFromPeer(ctx, peerAddress); err != nil {
 		ezlog.Log(s.logCtx).Errorf("GossipService: Periodic sync failed: %v", err)
 	}
