@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	idManagerPort = "8080"
+	idManagerPort uint16 = 8080
 )
 
 func main() {

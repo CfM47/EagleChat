@@ -21,7 +21,7 @@ type idManagerConnectorImpl struct {
 	ownProfile entities.OwnProfile
 }
 
-func NewIDManagerConnector(ownProfile entities.OwnProfile, CAPubkey rsa.PublicKey) managerpool_entities.IDManagerConnector {
+func NewIDManagerConnector(ownProfile entities.OwnProfile, CAPubkey *rsa.PublicKey) managerpool_entities.IDManagerConnector {
 	return &idManagerConnectorImpl{
 		ownProfile: ownProfile,
 	}

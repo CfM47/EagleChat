@@ -45,7 +45,7 @@ func NewConnector(
 	}
 }
 
-func (c Connector) Connect(ctx context.Context, listenPort uint16, ownProfile entities.OwnProfile, CAPubkey rsa.PublicKey) (services.Middleware, <-chan entities.Message, error) {
+func (c Connector) Connect(ctx context.Context, listenPort uint16, ownProfile entities.OwnProfile, CAPubkey *rsa.PublicKey) (services.Middleware, <-chan entities.Message, error) {
 	ezlog.Log(ctx).Infof("Connecting as user %s on port %d", ownProfile.User.Name, listenPort)
 	defer ezlog.Log(ctx).Info("Connector finished")
 

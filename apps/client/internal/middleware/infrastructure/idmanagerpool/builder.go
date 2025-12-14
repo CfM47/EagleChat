@@ -20,7 +20,7 @@ func NewIDManagerPoolBuilder() services.IDManagerPoolBuilder {
 }
 
 // Build implements services.IDManagerPoolBuilder.
-func (i *idManagerPoolBuilderImpl) Build(ctx context.Context, ownProfile entities.OwnProfile, CAPubkey rsa.PublicKey) (services.IDManagerPool, error) {
+func (i *idManagerPoolBuilderImpl) Build(ctx context.Context, ownProfile entities.OwnProfile, CAPubkey *rsa.PublicKey) (services.IDManagerPool, error) {
 	ezlog.Log(ctx).Info("Building ID manager pool")
 
 	repo := repositories.NewInMemoryIDManagerRepository(ExpirationTime)

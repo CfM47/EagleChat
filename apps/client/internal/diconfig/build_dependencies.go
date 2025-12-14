@@ -12,7 +12,6 @@ import (
 	jsonmessagecache "eaglechat/apps/client/internal/middleware/infrastructure/messagecache/json"
 	jsonusercache "eaglechat/apps/client/internal/middleware/infrastructure/usercache/json"
 	"eaglechat/apps/client/internal/tui"
-	"eaglechat/common/multicast/implementation"
 	"eaglechat/common/simplecrypto/rsa"
 )
 
@@ -20,10 +19,10 @@ type MiddlewareDeps struct {
 	TUI                  *tui.TUI
 	MiddlewareConnector  services.Connector
 	MiddlewareRegisterer services.Registerer
-	CAPubkey             rsa.PublicKey
+	CAPubkey             *rsa.PublicKey
 }
 
-func NewMiddlewareDeps(TUI *tui.TUI, connector services.Connector, registerer services.Registerer, CAPubkey rsa.PublicKey) *MiddlewareDeps {
+func NewMiddlewareDeps(TUI *tui.TUI, connector services.Connector, registerer services.Registerer, CAPubkey *rsa.PublicKey) *MiddlewareDeps {
 	return &MiddlewareDeps{
 		TUI:                  TUI,
 		MiddlewareConnector:  connector,
@@ -32,25 +31,22 @@ func NewMiddlewareDeps(TUI *tui.TUI, connector services.Connector, registerer se
 	}
 }
 
-func BuildMiddlewareDeps(idManagerPort string) (*MiddlewareDeps, error) {
-	// Build tui
+func BuildMiddlewareDeps(idManagerPort uint16) (*MiddlewareDeps, error) {
 	tui := tui.New()
 
-	// Build connector
 	connector, err := buildConnector()
 	if err != nil {
 		return nil, err
 	}
-
-	// Build registerer
-	registerer := buildRegisterer(idManagerPort)
 
 	pk, err := getCAPubkey()
 	if err != nil {
 		return nil, err
 	}
 
-	return NewMiddlewareDeps(tui, connector, registerer, *pk), nil
+	registerer := buildRegisterer(idManagerPort, pk)
+
+	return NewMiddlewareDeps(tui, connector, registerer, pk), nil
 }
 
 func buildConnector() (services.Connector, error) {
@@ -74,8 +70,8 @@ func buildConnector() (services.Connector, error) {
 	), nil
 }
 
-func buildRegisterer(idManagerPort string) services.Registerer {
-	return idmanagerregisterer.NewRegisterer(implementation.DefaultUDPAddress, idManagerPort, time.Second*10)
+func buildRegisterer(idManagerPort uint16, CAPubkey *rsa.PublicKey) services.Registerer {
+	return idmanagerregisterer.NewRegisterer(idManagerPort, time.Second*10, CAPubkey)
 }
 
 func getCAPubkey() (*rsa.PublicKey, error) {

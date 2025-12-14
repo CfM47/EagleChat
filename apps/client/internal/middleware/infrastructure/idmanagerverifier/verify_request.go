@@ -18,9 +18,11 @@ type PublicKeyResponse struct {
 	Signature []byte `json:"signature"`
 }
 
-func VerifyIDManager(ctx context.Context, IP net.IP, port uint16, CAPubkey rsa.PublicKey) (*rsa.PublicKey, *http.Client, error) {
+func VerifyIDManager(ctx context.Context, IP net.IP, port uint16, CAPubkey *rsa.PublicKey) (*rsa.PublicKey, *http.Client, error) {
 	baseURL := fmt.Sprintf("http://%s:%d", IP.String(), port)
 	client := &http.Client{}
+
+	ezlog.Log(ctx).Infof("Verifying public key and CA signature of ID manager at %s", baseURL)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL+"/pubkey", nil)
 	if err != nil {
@@ -49,7 +51,7 @@ func VerifyIDManager(ctx context.Context, IP net.IP, port uint16, CAPubkey rsa.P
 		return nil, nil, fmt.Errorf(strings.ToLower(msg)+": w", err)
 	}
 
-	err = rsa.Verify(response.PublicKey, response.Signature, &CAPubkey)
+	err = rsa.Verify(response.PublicKey, response.Signature, CAPubkey)
 	if err != nil {
 		msg := "ID Manager provided wrong signature for their public key"
 		ezlog.Log(ctx).Warnf(msg+": %v", err)
@@ -63,6 +65,8 @@ func VerifyIDManager(ctx context.Context, IP net.IP, port uint16, CAPubkey rsa.P
 		ezlog.Log(ctx).Errorf(msg+": %v", err)
 		return nil, nil, fmt.Errorf(msg+": %w", err)
 	}
+
+	ezlog.Log(ctx).Infof("Successfully verified id manager")
 
 	return managerPK, client, nil
 }
