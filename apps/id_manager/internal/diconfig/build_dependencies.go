@@ -81,7 +81,7 @@ func NewContainer() (*Container, error) {
 	clock := clock.NewClock()
 
 	// Initialize repositories
-	userRepo := persistence.NewJSONUserRepository(filepath.Join(dataDir, "users.json"))
+	userRepo := persistence.NewJSONUserRepository(filepath.Join(dataDir, "users.json"), clock)
 	pendingMessagesRepo := persistence.NewJSONPendingMessageRepository(filepath.Join(dataDir, "pending_messages.json"))
 
 	// Initialize discovery and gossip services
@@ -117,7 +117,7 @@ func NewContainer() (*Container, error) {
 	getRandomUsersUC := usecases.NewGetRandomUsersUseCase(userRepo)
 	queryPendingMessagesUC := usecases.NewQueryPendingMessagesUseCase(pendingMessagesRepo, userRepo)
 	addPendingMessagesUC := usecases.NewAddPendingMessagesUseCase(pendingMessagesRepo, userRepo, gossipService)
-	registerUserUC := usecases.NewRegisterUserUseCase(userRepo, gossipService)
+	registerUserUC := usecases.NewRegisterUserUseCase(userRepo, gossipService, clock)
 
 	// Initialize handlers
 	getTimeHandler := handlers.NewGetTimeHandler(getTimeUsecase)

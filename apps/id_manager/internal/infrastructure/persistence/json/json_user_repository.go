@@ -3,12 +3,12 @@ package json
 import (
 	"eaglechat/apps/id_manager/internal/domain/entities"
 	"eaglechat/apps/id_manager/internal/domain/repositories"
+	"eaglechat/common/clock"
 	"encoding/json"
 	"errors"
 	"net"
 	"os"
 	"sync"
-	"time"
 
 	"github.com/google/uuid"
 )
@@ -16,12 +16,13 @@ import (
 type JSONUserRepository struct {
 	filePath string
 	mu       sync.RWMutex
+	clock    clock.Clock
 }
 
 var _ repositories.UserRepository = (*JSONUserRepository)(nil)
 
-func NewJSONUserRepository(filePath string) *JSONUserRepository {
-	return &JSONUserRepository{filePath: filePath}
+func NewJSONUserRepository(filePath string, clock clock.Clock) *JSONUserRepository {
+	return &JSONUserRepository{filePath: filePath, clock: clock}
 }
 
 func (r *JSONUserRepository) load() ([]*entities.User, error) {
@@ -136,7 +137,7 @@ func (r *JSONUserRepository) UpdateIP(ID string, ip net.IP) error {
 		if users[i].ID == ID {
 			users[i].IP = &ip
 			// Update LastSeen when IP is updated, rounded to zero like in NewUser
-			users[i].LastSeen = time.Now().UTC().Round(0)
+			users[i].LastSeen = r.clock.Now().UTC().Round(0)
 			return r.save(users)
 		}
 	}
