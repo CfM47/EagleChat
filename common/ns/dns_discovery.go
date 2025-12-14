@@ -31,3 +31,20 @@ func (d *dnsDiscovery) DiscoverIDManagerIPs(ctx context.Context) ([]net.IP, erro
 	}
 	return ips, nil
 }
+
+// GetOwnHost retrieves the host IP address of the current service instance.
+func (d *dnsDiscovery) GetOwnHost() (string, error) {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return "", fmt.Errorf("failed to get interface addresses: %w", err)
+	}
+
+	for _, addr := range addrs {
+		if ipNet, ok := addr.(*net.IPNet); ok && !ipNet.IP.IsLoopback() {
+			if ipNet.IP.To4() != nil {
+				return ipNet.IP.String(), nil
+			}
+		}
+	}
+	return "", fmt.Errorf("no non-loopback IPv4 address found")
+}

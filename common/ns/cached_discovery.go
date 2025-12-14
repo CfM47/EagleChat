@@ -41,6 +41,10 @@ func (d *cachingDiscovery) DiscoverIDManagerIPs(ctx context.Context) ([]net.IP, 
 	return cachedIPs, nil
 }
 
+func (d *cachingDiscovery) GetOwnHost() (string, error) {
+	return d.wrappedDiscovery.GetOwnHost()
+}
+
 func (d *cachingDiscovery) updateCache(ips []net.IP) {
 	data, err := json.Marshal(ips)
 	if err != nil {
