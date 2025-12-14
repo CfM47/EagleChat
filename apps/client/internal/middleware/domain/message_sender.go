@@ -31,7 +31,6 @@ func (m *Middleware) messageSender(ctx context.Context) {
 		select {
 		case <-m.Done():
 			return
-		//   FIXME: timeouts
 		case <-messageSenderTicker.C:
 
 			targetedPendingMessageAttempt := ezlog.NewLoggerContext("targeted-send-pending-messages")
