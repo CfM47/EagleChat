@@ -50,16 +50,6 @@ func main() {
 		},
 		{
 			Method:  http.MethodGet,
-			Path:    "/pending-messages",
-			Handler: container.QueryPendingMessagesHandler,
-		},
-		{
-			Method:  http.MethodPost,
-			Path:    "pending-messages",
-			Handler: container.AddPendingMessagesHandler,
-		},
-		{
-			Method:  http.MethodGet,
 			Path:    "/pubkey",
 			Handler: container.PubKeyHandler,
 		},
