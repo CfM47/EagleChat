@@ -22,6 +22,5 @@ func (c *FreezingClock) now() time.Time {
 	}
 
 	// If not frozen (or the freeze is over), apply the offset to the real time.
-	return systemNow.Add(c.offset)
+	return systemNow.Add(c.offset).UTC().Round(0)
 }
-

@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"time"
 
 	"eaglechat/apps/client/internal/domain/entities"
 	middleware_entities "eaglechat/apps/client/internal/middleware/domain/entities"
@@ -13,6 +14,8 @@ type IDManagerPool interface {
 	NotifyOfPendingMessages(context.Context, []middleware_entities.MessageTarget) error
 	GetPendingMessages(context.Context) ([]middleware_entities.PendingMessage, error)
 	GetRandomConnectedUsers(ctx context.Context, count int) ([]middleware_entities.UserData, error)
+
+	Now(ctx context.Context) (time.Time, error)
 
 	Close() error
 	Done() <-chan struct{}

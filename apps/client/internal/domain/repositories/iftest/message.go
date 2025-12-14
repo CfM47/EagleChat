@@ -1,9 +1,11 @@
 package iftest
 
 import (
-	"eaglechat/apps/client/internal/domain/entities"
 	"sort"
 	"testing"
+	"time"
+
+	"eaglechat/apps/client/internal/domain/entities"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,12 +19,12 @@ func runMessageTests(t *testing.T, factory RepoFactory) {
 		defer cleanup()
 
 		privKeyA := getTestKeys(0)
-		userA := entities.NewUser("user-A", "Alice", *privKeyA.PublicKey())
+		userA := entities.NewUser("user-A", "Alice", *privKeyA.PublicKey(), time.Now())
 		profileA := entities.NewOwnProfile(userA, *privKeyA)
 		require.NoError(t, repo.SaveOwnProfile(profileA))
 
 		privKeyB := getTestKeys(1)
-		userB := entities.NewUser("user-B", "Bob", *privKeyB.PublicKey())
+		userB := entities.NewUser("user-B", "Bob", *privKeyB.PublicKey(), time.Now())
 
 		generatedChat := generateChat(userA, userB, 5, 5)
 
@@ -49,14 +51,14 @@ func runMessageTests(t *testing.T, factory RepoFactory) {
 		defer cleanup()
 
 		privKeyA := getTestKeys(0)
-		userA := entities.NewUser("user-A", "Alice", *privKeyA.PublicKey())
+		userA := entities.NewUser("user-A", "Alice", *privKeyA.PublicKey(), time.Now())
 		profileA := entities.NewOwnProfile(userA, *privKeyA)
 		require.NoError(t, repo.SaveOwnProfile(profileA))
 
 		privKeyB := getTestKeys(1)
-		userB := entities.NewUser("user-B", "Bob", *privKeyB.PublicKey())
+		userB := entities.NewUser("user-B", "Bob", *privKeyB.PublicKey(), time.Now())
 		privKeyC := getTestKeys(2)
-		userC := entities.NewUser("user-C", "Charlie", *privKeyC.PublicKey())
+		userC := entities.NewUser("user-C", "Charlie", *privKeyC.PublicKey(), time.Now())
 
 		chatB := generateChat(userA, userB, 3, 2) // 5 messages
 		chatC := generateChat(userA, userC, 4, 1) // 5 messages
@@ -82,12 +84,12 @@ func runMessageTests(t *testing.T, factory RepoFactory) {
 		defer cleanup()
 
 		privKeyA := getTestKeys(0)
-		userA := entities.NewUser("user-A", "Alice", *privKeyA.PublicKey())
+		userA := entities.NewUser("user-A", "Alice", *privKeyA.PublicKey(), time.Now())
 		profileA := entities.NewOwnProfile(userA, *privKeyA)
 		require.NoError(t, repo.SaveOwnProfile(profileA))
 
 		privKeyB := getTestKeys(1)
-		userB := entities.NewUser("user-B", "Bob", *privKeyB.PublicKey())
+		userB := entities.NewUser("user-B", "Bob", *privKeyB.PublicKey(), time.Now())
 
 		msg := generateChat(userA, userB, 1, 0)[0]
 
@@ -110,13 +112,13 @@ func runMessageTests(t *testing.T, factory RepoFactory) {
 		// We need a profile for the "self" user for the repository to work correctly
 		// with chat directions, even if no messages are sent from self.
 		privKeyA := getTestKeys(0)
-		userA := entities.NewUser("user-A", "Alice", *privKeyA.PublicKey())
+		userA := entities.NewUser("user-A", "Alice", *privKeyA.PublicKey(), time.Now())
 		profileA := entities.NewOwnProfile(userA, *privKeyA)
 		require.NoError(t, repo.SaveOwnProfile(profileA))
 
 		// This is the user we will have an empty chat with.
 		privKeyB := getTestKeys(1)
-		userB := entities.NewUser("user-B", "Bob", *privKeyB.PublicKey())
+		userB := entities.NewUser("user-B", "Bob", *privKeyB.PublicKey(), time.Now())
 		require.NoError(t, repo.SaveUser(userB))
 
 		// Act
@@ -141,13 +143,13 @@ func runMessageTests(t *testing.T, factory RepoFactory) {
 		// We need a profile for the "self" user for the repository to work correctly
 		// with chat directions, even if no messages are sent from self.
 		privKeyA := getTestKeys(0)
-		userA := entities.NewUser("user-A", "Alice", *privKeyA.PublicKey())
+		userA := entities.NewUser("user-A", "Alice", *privKeyA.PublicKey(), time.Now())
 		profileA := entities.NewOwnProfile(userA, *privKeyA)
 		require.NoError(t, repo.SaveOwnProfile(profileA))
 
 		// This is the user we will have an empty chat with.
 		privKeyB := getTestKeys(1)
-		userB := entities.NewUser("user-B", "Bob", *privKeyB.PublicKey())
+		userB := entities.NewUser("user-B", "Bob", *privKeyB.PublicKey(), time.Now())
 		require.NoError(t, repo.SaveUser(userB))
 
 		// Act
@@ -156,5 +158,35 @@ func runMessageTests(t *testing.T, factory RepoFactory) {
 		// Assert
 		require.NoError(t, err)
 		assert.Empty(t, messages, "Expected no messages for user with no chat history")
+	})
+
+	t.Run("message exists works as expected - existing", func(t *testing.T) {
+		t.Parallel()
+		// Arrange
+		repo, cleanup := factory(t)
+		defer cleanup()
+
+		privKeyA := getTestKeys(0)
+		userA := entities.NewUser("user-A", "Alice", *privKeyA.PublicKey(), time.Now())
+		profileA := entities.NewOwnProfile(userA, *privKeyA)
+		require.NoError(t, repo.SaveOwnProfile(profileA))
+
+		privKeyB := getTestKeys(1)
+		userB := entities.NewUser("user-B", "Bob", *privKeyB.PublicKey(), time.Now())
+
+		msg := generateChat(userA, userB, 1, 0)[0]
+
+		// Assert - 1
+		ok, err := repo.MessageExists(msg.ID, msg.Sender.ID)
+		require.NoError(t, err)
+		require.False(t, ok)
+
+		// Act - 2
+		require.NoError(t, repo.SaveMessage(msg))
+
+		// Assert - 2
+		ok, err = repo.MessageExists(msg.ID, msg.Sender.ID)
+		require.NoError(t, err)
+		require.True(t, ok)
 	})
 }

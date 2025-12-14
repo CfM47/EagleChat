@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"time"
 
 	"eaglechat/apps/client/internal/domain/entities"
 	"eaglechat/common/simplecrypto/rsa"
@@ -11,6 +12,8 @@ type Middleware interface {
 	Message(ctx context.Context, target entities.User, message entities.Message) error
 
 	QueryUser(userID entities.UserID) (entities.User, error)
+
+	Now() time.Time
 }
 
 type Connector interface {

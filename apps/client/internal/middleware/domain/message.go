@@ -17,8 +17,8 @@ import (
 func (m *Middleware) Message(ctx context.Context, target entities.User, message entities.Message) error {
 	pendingMsg, err := m.composeP2PMessage(target, message)
 	if err != nil {
-		ezlog.Log(ctx).Errorf("Failed to compose P2P message: %v", err)
-		return fmt.Errorf("failed to compose message: %w", err)
+		ezlog.Log(ctx).Errorf("Failed to compose pending message: %v", err)
+		return fmt.Errorf("failed to compose pending message: %w", err)
 	}
 
 	ip, err := m.getUserIfConnected(target.ID)

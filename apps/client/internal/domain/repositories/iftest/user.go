@@ -1,9 +1,11 @@
 package iftest
 
 import (
+	"testing"
+	"time"
+
 	"eaglechat/apps/client/internal/domain/entities"
 	"eaglechat/apps/client/internal/domain/repositories"
-	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,7 +19,7 @@ func runUserTests(t *testing.T, factory RepoFactory) {
 		defer cleanup()
 
 		privKey := getTestKeys(2)
-		expectedUser := entities.NewUser("user-3", "Charlie", *privKey.PublicKey())
+		expectedUser := entities.NewUser("user-3", "Charlie", *privKey.PublicKey(), time.Now())
 
 		// Act
 		err := repo.SaveUser(expectedUser)
@@ -55,7 +57,7 @@ func runUserTests(t *testing.T, factory RepoFactory) {
 		defer cleanup()
 
 		privKey := getTestKeys(3)
-		user := entities.NewUser("user-4", "David", *privKey.PublicKey())
+		user := entities.NewUser("user-4", "David", *privKey.PublicKey(), time.Now())
 		require.NoError(t, repo.SaveUser(user))
 
 		user.Name = "Dave"
@@ -78,19 +80,19 @@ func runUserTests(t *testing.T, factory RepoFactory) {
 
 		// userA is our own profile, userB is the new contact
 		privKeyA := getTestKeys(0)
-		userA := entities.NewUser("user-A", "Alice", *privKeyA.PublicKey())
+		userA := entities.NewUser("user-A", "Alice", *privKeyA.PublicKey(), time.Now())
 		profileA := entities.NewOwnProfile(userA, *privKeyA)
 		require.NoError(t, repo.SaveOwnProfile(profileA))
 
 		privKeyB := getTestKeys(1)
-		userB := entities.NewUser("user-B", "Bob", *privKeyB.PublicKey())
+		userB := entities.NewUser("user-B", "Bob", *privKeyB.PublicKey(), time.Now())
 
 		// Verify userB does not exist yet
 		_, err := repo.GetUser(userB.ID)
 		require.ErrorIs(t, err, repositories.ErrUserNotFound)
 
 		// Act: Save a message from the unknown userB to ourselves (userA)
-		msg := entities.NewMessage(userB, userA, "Hello from a stranger!")
+		msg := entities.NewMessage(userB, userA, "Hello from a stranger!", time.Now())
 		err = repo.SaveMessage(msg)
 		require.NoError(t, err)
 

@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"errors"
+	"maps"
 
 	"eaglechat/apps/client/internal/domain/entities"
 	middleware_entities "eaglechat/apps/client/internal/middleware/domain/entities"
@@ -60,9 +61,16 @@ func (m *Middleware) getUserData(ctx context.Context, userIDs []entities.UserID,
 		ezlog.Log(ctx).Errorf("ID manager pool query error: %v", err)
 	}
 
-	for id, user := range queriedUsers {
-		foundUsers[id] = user
-	}
+	go func() {
+		for _, user := range queriedUsers {
+			err := m.knownUsers.Save(user)
+			if err != nil {
+				ezlog.Log(ctx).Errorf("Failed to store user data in cache: %v", err)
+			}
+		}
+	}()
+
+	maps.Copy(foundUsers, queriedUsers)
 
 	return foundUsers, nil
 }

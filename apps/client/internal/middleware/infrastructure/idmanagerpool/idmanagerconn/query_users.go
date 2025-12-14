@@ -5,12 +5,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net"
 	"net/http"
 
 	"eaglechat/apps/client/internal/domain/entities"
 	"eaglechat/common/ezlog"
-	"eaglechat/common/simplecrypto/rsa"
 
 	middleware_entities "eaglechat/apps/client/internal/middleware/domain/entities"
 )
@@ -19,13 +17,7 @@ type queryUsersRequest struct {
 	IDs []string `json:"Ids"`
 }
 
-type userDataResponse struct {
-	Name      string `json:"username"`
-	PublicKey []byte `json:"public_key"`
-	IP        string `json:"ip,omitempty"`
-}
-
-type queryUsersResponse map[string]userDataResponse
+type queryUsersResponse map[string]userData
 
 func (c *idManagerConnectionImpl) QueryUsers(ctx context.Context, userIDs []entities.UserID, omitDisconnected bool) (map[entities.UserID]middleware_entities.UserData, error) {
 	url := fmt.Sprintf("%s/users", c.baseURL)
@@ -75,24 +67,13 @@ func (c *idManagerConnectionImpl) QueryUsers(ctx context.Context, userIDs []enti
 	}
 
 	result := make(map[entities.UserID]middleware_entities.UserData)
-	for id, data := range response {
-		userID := entities.UserID(id)
-		publicKey, err := rsa.PublicKeyFromBytes(data.PublicKey)
+	for _, data := range response {
+		userData, err := buildUserData(ctx, data)
 		if err != nil {
-			ezlog.Log(ctx).Warnf("Invalid public key found while querying user '%s' from ID manager", userID)
-			continue
+			return nil, err
 		}
 
-		ip := net.ParseIP(data.IP)
-		if ip == nil {
-			ezlog.Log(ctx).Warnf("Invalid IP address found while querying user '%s' from ID manager: %s", userID, data.IP)
-			return nil, fmt.Errorf("invalid IP address for user %s: %s", userID, data.IP)
-		}
-
-		result[userID] = middleware_entities.UserData{
-			User: entities.NewUser(string(userID), data.Name, *publicKey),
-			IP:   &ip,
-		}
+		result[userData.ID] = userData
 	}
 
 	return result, nil

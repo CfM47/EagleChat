@@ -22,4 +22,5 @@ func (c *Controller) connectToMiddleware(ctx context.Context, profile entities.O
 
 	c.connectedMiddleware = connectedMiddleware
 	c.messageChannel = msgChan
+	c.clock.SetClock(ctx, connectedMiddleware)
 }

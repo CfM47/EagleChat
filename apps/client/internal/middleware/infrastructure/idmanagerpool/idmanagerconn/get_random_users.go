@@ -13,15 +13,8 @@ import (
 	"eaglechat/common/simplecrypto/rsa"
 )
 
-type randomUserJSON struct {
-	ID        string `json:"id"`
-	Username  string `json:"username"`
-	PublicKey []byte `json:"public_key"`
-	IP        string `json:"ip"`
-}
-
 type getRandomUsersResponse struct {
-	Users []randomUserJSON `json:"users"`
+	Users []userData `json:"users"`
 }
 
 func (c *idManagerConnectionImpl) GetRandomConnectedUsers(ctx context.Context, count int) ([]middleware_entities.UserData, error) {
@@ -66,10 +59,17 @@ func (c *idManagerConnectionImpl) GetRandomConnectedUsers(ctx context.Context, c
 			continue
 		}
 
-		result = append(result, middleware_entities.UserData{
-			User: entities.NewUser(u.ID, u.Username, *publicKey),
-			IP:   &ip,
-		})
+		userData := middleware_entities.NewUserData(
+			entities.NewUser(
+				u.ID,
+				u.Username,
+				*publicKey,
+				u.LastSeen,
+			),
+			&ip,
+		)
+
+		result = append(result, userData)
 	}
 
 	return result, nil

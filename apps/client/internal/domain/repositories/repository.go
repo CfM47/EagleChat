@@ -1,9 +1,10 @@
 package repositories
 
 import (
-	"eaglechat/apps/client/internal/domain/entities"
 	"errors"
 	"time"
+
+	"eaglechat/apps/client/internal/domain/entities"
 )
 
 var (
@@ -28,6 +29,8 @@ type ClientRepository interface {
 	// (ID, Sender.ID) pair as some other message in the repository, if this happens,
 	// the message is assumed to be a duplicate and ignored
 	SaveMessage(entities.Message) error
+
+	MessageExists(messageID string, senderID entities.UserID) (bool, error)
 
 	// GetChat returns all messages for a given chat, sorted by creation time
 	GetChat(entities.UserID) ([]entities.Message, error)
