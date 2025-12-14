@@ -10,7 +10,7 @@ import (
 	"eaglechat/apps/id_manager/internal/application/usecases"
 	"eaglechat/apps/id_manager/internal/infrastructure/http/handlers"
 	persistence "eaglechat/apps/id_manager/internal/infrastructure/persistence/json"
-	"eaglechat/common/clock/freezing"
+	"eaglechat/common/clock"
 	"eaglechat/common/ns"
 	"eaglechat/common/simplecrypto/rsa"
 )
@@ -78,7 +78,7 @@ func NewContainer() (*Container, error) {
 	// --- End Cryptographic Materials Loading ---
 
 	// Initialize clock
-	clock := freezing.NewFreezingClock()
+	clock := clock.NewClock()
 
 	// Initialize repositories
 	userRepo := persistence.NewJSONUserRepository(filepath.Join(dataDir, "users.json"))
