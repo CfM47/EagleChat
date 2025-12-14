@@ -13,20 +13,22 @@ REPO_ROOT="$(cd "$IAC_DIR/.." && pwd)"
 
 NETWORK_NAME="eaglechat-net"
 CA_KEY="$REPO_ROOT/ca.key"
-CA_PUB_KEY="$REPO_ROOT/ca_public_key.pem"
 TMP_CERT_DIR="$IAC_DIR/tmp_certs"
+COMMON_CA_DIR="$TMP_CERT_DIR/common_ca"
+COMMON_CA_PUB_KEY="$COMMON_CA_DIR/ca_public_key.pem"
 
 # --- Helper Functions ---
 
 # Generates a new Certificate Authority (CA) key pair if one doesn't exist.
 generate_ca() {
-  if [ -f "$CA_KEY" ] && [ -f "$CA_PUB_KEY" ]; then
+  mkdir -p "$COMMON_CA_DIR"
+  if [ -f "$CA_KEY" ] && [ -f "$COMMON_CA_PUB_KEY" ]; then
     echo "====> CA key pair already exists. Skipping generation."
     return
   fi
   echo "====> Generating new CA key pair..."
   openssl genrsa -out "$CA_KEY" 4096
-  openssl rsa -in "$CA_KEY" -pubout -out "$CA_PUB_KEY"
+  openssl rsa -in "$CA_KEY" -pubout -out "$COMMON_CA_PUB_KEY"
   echo "CA key pair generated."
 }
 
@@ -52,7 +54,7 @@ generate_manager_credentials() {
   openssl dgst -sha256 -sigopt rsa_padding_mode:pss -sign "$CA_KEY" -out "$signature_path" "$pub_key_path"
 
   # 3. Copy the CA's public key for the container to use
-  cp "$CA_PUB_KEY" "$output_dir/ca_public_key.pem"
+  cp "$COMMON_CA_PUB_KEY" "$output_dir/ca_public_key.pem"
   
   echo "Credentials for $manager_cn created in $output_dir"
 }
@@ -105,6 +107,7 @@ remove_network() {
 # Removes temporary credentials.
 cleanup_credentials() {
     echo -e "\n====> Cleaning up temporary credentials..."
+    rm -f "$CA_KEY" "$COMMON_CA_PUB_KEY"
     rm -rf "$TMP_CERT_DIR"
     echo "Temporary credentials removed."
 }
