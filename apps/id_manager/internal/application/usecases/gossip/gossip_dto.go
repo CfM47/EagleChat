@@ -24,13 +24,6 @@ type GossipExchangeResponse struct {
 	Envelope *simplecrypto.SecureEnvelope `json:"envelope"`
 }
 
-// GossipPayload is the internal data structure that is actually exchanged.
-// This struct will be marshaled to JSON and then encrypted inside the SecureEnvelope.
-type GossipPayload struct {
-	KnownPeers  map[string]PeerInfo `json:"known_peers"`
-	LastUpdated map[string]int64    `json:"last_updated"`
-}
-
 type PeerInfo struct {
 	Address string `json:"address"`
 	// other metadata

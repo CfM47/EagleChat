@@ -77,13 +77,21 @@ func (h *SyncDataHandler) Handle(c *gin.Context) {
 	}
 
 	// 4. Unmarshal the decrypted gossip payload
-	var peerGossipPayload gossip.GossipPayload
+	var peerGossipPayload usecases.SyncData
 	if err := json.Unmarshal(peerGossipBytes, &peerGossipPayload); err != nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Bad Request: Invalid gossip payload"})
 		return
 	}
 
-	ezlog.Log(logCtx).Infof("SyncDataHandler: Received and verified gossip from peer. KnownPeers: %+v", peerGossipPayload.KnownPeers)
+	ezlog.Log(logCtx).Infof("SyncDataHandler: Received and verified gossip from peer. Procceeding to merge data.")
+
+	// 4.5 Merge the incoming data into local repositories
+	if err := h.syncDataUC.MergeData(ctx, peerGossipPayload); err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Internal server error merging data"})
+		return
+	}
+
+	ezlog.Log(logCtx).Infof("SyncDataHandler: Successfully merged gossip data from peer.")
 
 	// 5. Prepare this node's own gossip payload to send back.
 	myGossipData, err := h.syncDataUC.GetAllDataForSync(ctx)

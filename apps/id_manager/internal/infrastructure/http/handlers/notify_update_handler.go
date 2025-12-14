@@ -1,9 +1,12 @@
 package handlers
 
 import (
+	"context"
 	"eaglechat/apps/id_manager/internal/application/ports"
 	"eaglechat/common/ezlog"
+	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -38,15 +41,19 @@ func (h *NotifyUpdateHandler) Handle(c *gin.Context) {
 		return
 	}
 
-	ctx := c.Request.Context()
+	ezlog.Log(logCtx).Debugf("Received update-notification from source %s", req.SourceAddress)
+
 	// We run this in a goroutine to avoid blocking the caller.
 	// The caller (another ID manager) doesn't need to wait for our sync to complete.
-	go func() {
-		if err := h.notifier.TriggerSyncFromPeer(ctx, req.SourceAddress); err != nil {
+	go func(source string) {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		if err := h.notifier.TriggerSyncFromPeer(ctx, source); err != nil {
 			// Log the error for observability, but we don't need to return an error to the caller.
 			ezlog.Log(logCtx).Errorf("NotifyUpdateHandler: failed to trigger sync from peer %s: %v", req.SourceAddress, err)
 		}
-	}()
+	}(fmt.Sprintf("%s:%s", req.SourceAddress, h.notifier.GetPort()))
 
 	c.JSON(http.StatusOK, gin.H{"status": "sync triggered"})
 }
