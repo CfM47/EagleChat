@@ -37,13 +37,7 @@ func NewContainer() (*Container, error) {
 	}
 
 	// Config
-	ownAddress := "localhost:8080"
-	gossipPort := "8080"
 	gossipInterval := 10 * time.Second
-	commonName := os.Getenv("COMMON_NAME")
-	if commonName == "" {
-		commonName = ownAddress
-	}
 
 	// --- Load CA Public Key ---
 	caPubKeyPath := os.Getenv("CA_PUBLIC_KEY_PATH")
@@ -89,6 +83,12 @@ func NewContainer() (*Container, error) {
 	dnsDiscovery := ns.NewDNSDiscovery()
 	cachedDiscovery := ns.NewCachingDiscovery(dnsDiscovery, filepath.Join(dataDir, "ip_cache.json"))
 	peerProvider := gossip.NewDnsPeerProvider(cachedDiscovery)
+
+	ownAddress, err := dnsDiscovery.GetOwnHost()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get own host address: %w", err)
+	}
+	gossipPort := "8080" // we could also make this more robust
 
 	// Usecases need to be created before gossip service if gossip service depends on them
 	syncDataUC := usecases.NewSyncDataUseCase(userRepo, pendingMessagesRepo)
