@@ -10,8 +10,7 @@ import (
 
 type IDManagerConnection interface {
 	QueryUsers(ctx context.Context, IDs []entities.UserID, omitDisconnected bool) (map[entities.UserID]middleware_entities.UserData, error)
-	NotifyOfPendingMessages(ctx context.Context, ownID entities.UserID, pendingMessageTargets []middleware_entities.MessageTarget) error
-	GetPendingMessages(context.Context) ([]middleware_entities.PendingMessage, error)
+	AnnouncePresence(ctx context.Context) error
 	GetRandomConnectedUsers(ctx context.Context, count int) ([]middleware_entities.UserData, error)
 
 	Time(ctx context.Context) (time.Time, error)
