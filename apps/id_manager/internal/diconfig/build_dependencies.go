@@ -10,11 +10,13 @@ import (
 	"eaglechat/apps/id_manager/internal/application/usecases"
 	"eaglechat/apps/id_manager/internal/infrastructure/http/handlers"
 	persistence "eaglechat/apps/id_manager/internal/infrastructure/persistence/json"
+	"eaglechat/common/clock/freezing"
 	"eaglechat/common/ns"
 	"eaglechat/common/simplecrypto/rsa"
 )
 
 type Container struct {
+	GetTimeHandler              handlers.Handler
 	QueryUserHandler            handlers.Handler
 	GetRandomUsersHandler       handlers.Handler
 	QueryPendingMessagesHandler handlers.Handler
@@ -75,6 +77,9 @@ func NewContainer() (*Container, error) {
 	}
 	// --- End Cryptographic Materials Loading ---
 
+	// Initialize clock
+	clock := freezing.NewFreezingClock()
+
 	// Initialize repositories
 	userRepo := persistence.NewJSONUserRepository(filepath.Join(dataDir, "users.json"))
 	pendingMessagesRepo := persistence.NewJSONPendingMessageRepository(filepath.Join(dataDir, "pending_messages.json"))
@@ -107,6 +112,7 @@ func NewContainer() (*Container, error) {
 	)
 
 	// Initialize other use cases that need the notifier
+	getTimeUsecase := usecases.NewGetTimeUseCase(clock)
 	queryUserDataUC := usecases.NewQueryUserDataUseCase(userRepo)
 	getRandomUsersUC := usecases.NewGetRandomUsersUseCase(userRepo)
 	queryPendingMessagesUC := usecases.NewQueryPendingMessagesUseCase(pendingMessagesRepo, userRepo)
@@ -114,6 +120,7 @@ func NewContainer() (*Container, error) {
 	registerUserUC := usecases.NewRegisterUserUseCase(userRepo, gossipService)
 
 	// Initialize handlers
+	getTimeHandler := handlers.NewGetTimeHandler(getTimeUsecase)
 	syncDataHandler := handlers.NewSyncDataHandler(syncDataUC, myPrivKey, caPubKey)
 	notifyUpdateHandler := handlers.NewNotifyUpdateHandler(gossipService)
 	getRandomUsersHandler := handlers.NewGetRandomUsersHandler(getRandomUsersUC)
@@ -124,6 +131,7 @@ func NewContainer() (*Container, error) {
 	pubKeyHandler := handlers.NewPubKeyHandler(myPrivKey, mySignature)
 
 	return &Container{
+		GetTimeHandler:              getTimeHandler,
 		QueryUserHandler:            queryUserHandler,
 		GetRandomUsersHandler:       getRandomUsersHandler,
 		QueryPendingMessagesHandler: queryPendingMessagesHandler,

@@ -30,6 +30,11 @@ func main() {
 	routes := []router.Route{
 		{
 			Method:  http.MethodGet,
+			Path:    "/time",
+			Handler: container.GetTimeHandler,
+		},
+		{
+			Method:  http.MethodGet,
 			Path:    "/users",
 			Handler: container.QueryUserHandler,
 		},
@@ -53,17 +58,17 @@ func main() {
 			Path:    "pending-messages",
 			Handler: container.AddPendingMessagesHandler,
 		},
-		{ // New route for public key exchange
+		{
 			Method:  http.MethodGet,
 			Path:    "/pubkey",
 			Handler: container.PubKeyHandler,
 		},
-		{ // Route for secure gossip sync
+		{
 			Method:  http.MethodPost,
 			Path:    "/sync",
 			Handler: container.SyncDataHandler,
 		},
-		{ // New route for gossip sync notification
+		{
 			Method:  http.MethodPost,
 			Path:    "/notify-update",
 			Handler: container.NotifyUpdateHandler,

@@ -30,7 +30,6 @@ func (c *FreezingClock) Sync(targetTime time.Time) {
 	} else {
 		// --- CLOCK IS BEHIND: JUMP ---
 		// Jump forward by setting the offset.
-		c.offset = targetTime.Sub(time.Now())
+		c.offset = time.Until(targetTime)
 	}
 }
-
