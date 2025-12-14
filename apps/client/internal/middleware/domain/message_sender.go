@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	messageSenderInterval           = 10 * time.Second
+	messageSenderInterval           = 5 * time.Second
 	maxUsersToSendMessagesToPerTick = 0
 	usersToSpreadMessagesTo         = 10
 )
@@ -25,18 +25,20 @@ func (m *Middleware) messageSender(ctx context.Context) {
 
 	defer ezlog.Log(ctx).Info("Stopped message sender.")
 
+	messageSenderTicker := time.NewTicker(messageSenderInterval)
+
 	for {
 		select {
 		case <-m.Done():
 			return
 		//   FIXME: timeouts
-		case <-m.messageSenderTicker.C:
+		case <-messageSenderTicker.C:
 
-			targetedPendingMessageAttemp := ezlog.NewLoggerContext("targeted-send-pending-messages")
-			m.sendPendingMessages(targetedPendingMessageAttemp)
+			targetedPendingMessageAttempt := ezlog.NewLoggerContext("targeted-send-pending-messages")
+			m.sendPendingMessages(targetedPendingMessageAttempt)
 
-			spreadPendingMessagesAttemp := ezlog.NewLoggerContext("spread-pending-messages")
-			m.spreadOwnMessages(spreadPendingMessagesAttemp)
+			spreadPendingMessagesAttempt := ezlog.NewLoggerContext("spread-pending-messages")
+			m.spreadOwnMessages(spreadPendingMessagesAttempt)
 		}
 	}
 }
@@ -51,13 +53,16 @@ func (m *Middleware) sendPendingMessages(ctx context.Context) {
 		return
 	}
 
-	if maxUsersToSendMessagesToPerTick == 0 || len(onlineUsers) < maxUsersToSendMessagesToPerTick {
+	if len(onlineUsers) == 0 {
 		ezlog.Log(ctx).Info("No online users with pending messages found.")
 		return
 	}
 
 	// Limit the number of users to process in this tick
-	limit := min(len(onlineUsers), maxUsersToSendMessagesToPerTick)
+	limit := len(onlineUsers)
+	if maxUsersToSendMessagesToPerTick != 0 {
+		limit = min(limit, maxUsersToSendMessagesToPerTick)
+	}
 
 	ezlog.Log(ctx).Infof("found %d online users with pending messages. processing %d this tick.", len(onlineUsers), limit)
 
@@ -76,7 +81,10 @@ func (m *Middleware) spreadOwnMessages(ctx context.Context) {
 	immuneTargets := m.messageCache.GetTargets().Immune
 	messages := m.messageCache.GetByTargets(immuneTargets)
 
+	ezlog.Log(ctx).Infof("Attempting to spread %d own messages...", len(messages))
+
 	if len(immuneTargets) == 0 {
+		ezlog.Log(ctx).Info("No immune messages to spread")
 		return
 	}
 

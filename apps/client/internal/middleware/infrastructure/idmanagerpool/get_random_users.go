@@ -10,6 +10,7 @@ import (
 )
 
 func (p *idManagerPoolImpl) GetRandomConnectedUsers(ctx context.Context, count int) ([]middleware_entities.UserData, error) {
+	// FIXME: add logging
 	if count <= 0 {
 		return []middleware_entities.UserData{}, nil
 	}

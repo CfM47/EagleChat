@@ -20,5 +20,5 @@ func NewUserData(user entities.User, IP *net.IP) UserData {
 }
 
 func (d *UserData) GetUser() entities.User {
-	return entities.NewUser(string(d.ID), d.Name, d.PublicKey)
+	return entities.NewUser(string(d.ID), d.Name, d.PublicKey, d.LastSeen)
 }

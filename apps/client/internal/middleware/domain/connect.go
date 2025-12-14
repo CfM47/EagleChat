@@ -2,13 +2,13 @@ package middleware
 
 import (
 	"context"
-	"time"
 
 	"eaglechat/apps/client/internal/domain/entities"
 	"eaglechat/apps/client/internal/domain/services"
 	message_cache "eaglechat/apps/client/internal/middleware/domain/repositories/messagecache"
 	user_cache "eaglechat/apps/client/internal/middleware/domain/repositories/usercache"
 	middleware_services "eaglechat/apps/client/internal/middleware/domain/services"
+	"eaglechat/common/clock"
 	"eaglechat/common/ezlog"
 	"eaglechat/common/simplecrypto/rsa"
 )
@@ -76,23 +76,22 @@ func (c Connector) Connect(ctx context.Context, listenPort uint16, ownProfile en
 
 		receivedMessages: (chan<- entities.Message)(messageChannel),
 
-		quit: make(chan struct{}),
+		clock: clock.NewClock(),
 
-		messageSenderTicker: time.NewTicker(messageSenderInterval),
-		announcementTicker:  time.NewTicker(presenceAnnouncerInterval),
+		quit: make(chan struct{}),
 	}
 
-	ezlog.Log(ctx).Info("Starting P2P listener...")
 	receiverCtx := ezlog.NewLoggerContext("message-receiver")
 	go m.messageReceiver(receiverCtx)
 
-	ezlog.Log(ctx).Info("Starting message sender...")
 	senderCtx := ezlog.NewLoggerContext("message-sender")
 	go m.messageSender(senderCtx)
 
-	ezlog.Log(ctx).Info("Starting presence announcer...")
 	announcerCtx := ezlog.NewLoggerContext("presence-announcer")
 	go m.presenceAnnouncer(announcerCtx)
+
+	synchronizerCtx := ezlog.NewLoggerContext("time-synchronizer")
+	go m.timeSynchronizer(synchronizerCtx)
 
 	return &m, (<-chan entities.Message)(messageChannel), nil
 }

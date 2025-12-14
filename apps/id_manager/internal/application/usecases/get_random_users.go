@@ -42,12 +42,7 @@ func (uc *GetRandomUsersUseCase) Execute(ctx context.Context, req *GetRandomUser
 	if len(connectedUsers) <= amount {
 		users := make([]UserData, len(connectedUsers))
 		for i, u := range connectedUsers {
-			users[i] = UserData{
-				Username:  u.Username,
-				PublicKey: u.PublicKeyPEM,
-				IP:        u.IP,
-				ID:        u.ID,
-			}
+			users[i] = *NewUserData(u)
 		}
 		return &GetRandomUsersResponse{Users: users}, nil
 	}
@@ -60,12 +55,7 @@ func (uc *GetRandomUsersUseCase) Execute(ctx context.Context, req *GetRandomUser
 
 	users := make([]UserData, len(randomUsers))
 	for i, u := range randomUsers {
-		users[i] = UserData{
-			Username:  u.Username,
-			PublicKey: u.PublicKeyPEM,
-			IP:        u.IP,
-			ID:        u.ID,
-		}
+		users[i] = *NewUserData(u)
 	}
 
 	return &GetRandomUsersResponse{Users: users}, nil

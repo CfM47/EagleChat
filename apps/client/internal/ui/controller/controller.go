@@ -26,6 +26,8 @@ type Controller struct {
 	appState     models.AppState
 	activeChatID string
 	error        string
+
+	clock controllerClock
 }
 
 // New creates a new controller.
@@ -43,5 +45,6 @@ func New(
 		repository:     repository,
 		messageChannel: nil,
 		CAPubkey:       CAPubkey,
+		clock:          newControllerClock(),
 	}
 }

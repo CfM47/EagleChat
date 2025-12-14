@@ -1,14 +1,15 @@
 package iftest
 
 import (
-	"eaglechat/apps/client/internal/domain/entities"
-	"eaglechat/apps/client/internal/domain/repositories"
-	"eaglechat/common/simplecrypto/rsa"
 	"fmt"
 	"math/rand"
 	"sync"
 	"testing"
 	"time"
+
+	"eaglechat/apps/client/internal/domain/entities"
+	"eaglechat/apps/client/internal/domain/repositories"
+	"eaglechat/common/simplecrypto/rsa"
 
 	"github.com/stretchr/testify/require"
 )
@@ -56,10 +57,10 @@ func generateChat(self, peer entities.User, numSelf, numPeer int) []entities.Mes
 
 	// 1. Generate all messages without timestamps
 	for i := 0; i < numSelf; i++ {
-		messages = append(messages, entities.NewMessage(self, peer, fmt.Sprintf("Message from self %d", i)))
+		messages = append(messages, entities.NewMessage(self, peer, fmt.Sprintf("Message from self %d", i), time.Now()))
 	}
 	for i := 0; i < numPeer; i++ {
-		messages = append(messages, entities.NewMessage(peer, self, fmt.Sprintf("Message from peer %d", i)))
+		messages = append(messages, entities.NewMessage(peer, self, fmt.Sprintf("Message from peer %d", i), time.Now()))
 	}
 
 	// 2. Shuffle them to randomize who sent when

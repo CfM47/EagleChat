@@ -1,13 +1,12 @@
 package middleware
 
 import (
-	"time"
-
 	"eaglechat/apps/client/internal/domain/entities"
 	"eaglechat/apps/client/internal/domain/services"
 	message_cache "eaglechat/apps/client/internal/middleware/domain/repositories/messagecache"
 	user_cache "eaglechat/apps/client/internal/middleware/domain/repositories/usercache"
 	middleware_services "eaglechat/apps/client/internal/middleware/domain/services"
+	"eaglechat/common/clock"
 )
 
 type Middleware struct {
@@ -23,15 +22,14 @@ type Middleware struct {
 
 	receivedMessages chan<- entities.Message
 
-	messageSenderTicker *time.Ticker
-	announcementTicker  *time.Ticker
-	quit                chan struct{}
+	clock clock.Clock
+
+	quit chan struct{}
 }
 
 var _ services.Middleware = (*Middleware)(nil)
 
 func (m *Middleware) Shutdown() {
-	m.messageSenderTicker.Stop()
 	close(m.quit)
 }
 

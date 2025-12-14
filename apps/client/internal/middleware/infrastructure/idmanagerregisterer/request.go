@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"eaglechat/apps/client/internal/domain/entities"
 	"eaglechat/common/ezlog"
@@ -80,5 +81,6 @@ func (r *registererImpl) requestRegistration(ctx context.Context, username strin
 
 	ezlog.Log(ctx).Infof("Successfully registered with ID Manager. Received user ID: %s", res.ID)
 
-	return entities.NewUser(res.ID, username, *pk), nil
+	// FIXME: we shouldn't have LastSeen for the client itself
+	return entities.NewUser(res.ID, username, *pk, time.Time{}), nil
 }

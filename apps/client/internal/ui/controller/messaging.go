@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+
 	"eaglechat/apps/client/internal/domain/entities"
 	"eaglechat/common/ezlog"
 )
@@ -29,7 +30,7 @@ func (c *Controller) handleSendMessage(ctx context.Context, content string) {
 		return
 	}
 
-	message := entities.NewMessage(self.User, targetUser, content)
+	message := entities.NewMessage(self.User, targetUser, content, c.clock.Now(ctx))
 
 	c.repository.SaveMessage(message)
 
@@ -46,13 +47,19 @@ func (c *Controller) handleSendMessage(ctx context.Context, content string) {
 func (c *Controller) handleIncomingMessage(ctx context.Context, msg entities.Message) {
 	ezlog.Log(ctx).Infof("Received message from %s", msg.Sender.ID)
 
+	messageExists, err := c.repository.MessageExists(msg.ID, msg.Sender.ID)
+	if err != nil {
+		ezlog.Log(ctx).Errorf("Failed to check if incoming message exists: %v", err)
+		return
+	}
+
 	if err := c.repository.SaveMessage(msg); err != nil {
 		ezlog.Log(ctx).Errorf("Failed to save incoming message: %v", err)
 		return
 	}
 
 	// If the message is not for the currently active chat, increment unread count.
-	if string(msg.Sender.ID) != c.activeChatID {
+	if string(msg.Sender.ID) != c.activeChatID && !messageExists {
 		if err := c.repository.IncrementUnreadCount(msg.Sender.ID); err != nil {
 			ezlog.Log(ctx).Errorf("Failed to increment unread count: %v", err)
 		}

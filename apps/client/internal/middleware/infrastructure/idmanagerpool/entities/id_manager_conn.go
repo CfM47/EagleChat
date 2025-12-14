@@ -2,6 +2,7 @@ package entities
 
 import (
 	"context"
+	"time"
 
 	"eaglechat/apps/client/internal/domain/entities"
 	middleware_entities "eaglechat/apps/client/internal/middleware/domain/entities"
@@ -12,6 +13,8 @@ type IDManagerConnection interface {
 	NotifyOfPendingMessages(ctx context.Context, ownID entities.UserID, pendingMessageTargets []middleware_entities.MessageTarget) error
 	GetPendingMessages(context.Context) ([]middleware_entities.PendingMessage, error)
 	GetRandomConnectedUsers(ctx context.Context, count int) ([]middleware_entities.UserData, error)
+
+	Time(ctx context.Context) (time.Time, error)
 
 	BaseURL() string
 }

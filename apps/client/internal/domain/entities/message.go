@@ -14,12 +14,12 @@ type Message struct {
 	CreatedTime time.Time
 }
 
-func NewMessage(sender User, target User, content string) Message {
+func NewMessage(sender User, target User, content string, createdTime time.Time) Message {
 	return Message{
 		ID:          uuid.New().String(),
 		Sender:      sender,
 		Target:      target,
 		Content:     content,
-		CreatedTime: time.Now().UTC().Round(0),
+		CreatedTime: createdTime,
 	}
 }

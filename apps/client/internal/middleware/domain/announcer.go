@@ -14,11 +14,13 @@ func (m *Middleware) presenceAnnouncer(ctx context.Context) {
 	ezlog.Log(ctx).Info("Starting announcer...")
 	defer ezlog.Log(ctx).Info("Announcer stopped")
 
+	announcementTicker := time.NewTicker(presenceAnnouncerInterval)
+
 	for {
 		select {
 		case <-m.Done():
 			return
-		case <-m.announcementTicker.C:
+		case <-announcementTicker.C:
 			announcementCtx := ezlog.NewLoggerContext("presence-announcement")
 			m.announcePresence(announcementCtx)
 		}
