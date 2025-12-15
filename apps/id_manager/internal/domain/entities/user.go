@@ -30,11 +30,3 @@ func NewUser(id, username string, publicKeyPEM []byte, lastSeen time.Time) *User
 		LastSeen:     lastSeen.UTC().Round(0),
 	}
 }
-
-// IsIPExpired checks if the IP address is expired based on LastSeen time
-func (u *User) IsIPExpired() bool {
-	if u.IP == nil {
-		return false
-	}
-	return time.Since(u.LastSeen) > IPExpirationDuration
-}
