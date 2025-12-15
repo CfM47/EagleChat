@@ -63,6 +63,11 @@ func main() {
 			Path:    "/notify-update",
 			Handler: container.NotifyUpdateHandler,
 		},
+		{
+			Method:  http.MethodPost,
+			Path:    "/announce",
+			Handler: container.AnnounceHandler,
+		},
 	}
 
 	r := gin.Default()

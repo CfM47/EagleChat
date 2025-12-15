@@ -4,7 +4,9 @@ import (
 	"context"
 	"eaglechat/apps/id_manager/internal/domain/entities"
 	"eaglechat/apps/id_manager/internal/domain/repositories/user"
+	"eaglechat/common/clock"
 	"eaglechat/common/ezlog"
+	"time"
 )
 
 // SyncData represents the aggregate data exchanged between ID Managers for synchronization.
@@ -14,7 +16,9 @@ type SyncData struct {
 
 // SyncDataUseCase handles the aggregation and merging of ID Manager data.
 type SyncDataUseCase struct {
-	userRepo user.UserRepository
+	userRepo           user.UserRepository
+	clock              clock.Clock
+	expirationDuration time.Duration
 
 	// Logger context
 	logCtx context.Context
@@ -23,10 +27,14 @@ type SyncDataUseCase struct {
 // NewSyncDataUseCase creates a new SyncDataUseCase.
 func NewSyncDataUseCase(
 	userRepo user.UserRepository,
+	clock clock.Clock,
+	expirationDuration time.Duration,
 ) *SyncDataUseCase {
 	return &SyncDataUseCase{
-		userRepo: userRepo,
-		logCtx:   ezlog.NewLoggerContext("sync data usecase"),
+		userRepo:           userRepo,
+		clock:              clock,
+		expirationDuration: expirationDuration,
+		logCtx:             ezlog.NewLoggerContext("sync data usecase"),
 	}
 }
 
@@ -66,10 +74,18 @@ func (uc *SyncDataUseCase) MergeData(ctx context.Context, incomingData SyncData)
 				ezlog.Log(uc.logCtx).Errorf("SyncDataUseCase: failed to update user %s: %v", incomingUser.ID, err)
 			}
 		}
-		// TODO: If timestamps are equal, we could do a more detailed merge of IPs, but for now,
-		// we'll consider it up-to-date or handle conflicts by keeping existing.
-		// For simplicity, if LastSeen is equal or older, we do nothing.
-		// This implies the local data is authoritative or equally fresh.
+
+		expirationThreshold := uc.clock.Now().Add(-uc.expirationDuration)
+
+		// If timestamps are equal or local is newer, check for ip expiration on the existing user.
+		if existingUser.LastSeen.Before(expirationThreshold) && existingUser.IP != nil {
+			ezlog.Log(uc.logCtx).Debugf("User %s ip has expired", existingUser.Username)
+			// Expire user by setting IP to nil
+			err := uc.userRepo.UpdateIP(existingUser.ID, nil)
+			if err != nil {
+				return err
+			}
+		}
 
 	}
 

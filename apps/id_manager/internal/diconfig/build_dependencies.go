@@ -23,6 +23,7 @@ type Container struct {
 	SyncDataHandler       handlers.Handler
 	NotifyUpdateHandler   handlers.Handler
 	PubKeyHandler         handlers.Handler
+	AnnounceHandler       handlers.Handler
 	GossipService         *gossip.GossipService
 }
 
@@ -38,6 +39,7 @@ func NewContainer() (*Container, error) {
 
 	// Config
 	gossipInterval := 10 * time.Second
+	expirationDuration := 30 * time.Second
 
 	// --- Load CA Public Key ---
 	caPubKeyPath := os.Getenv("CA_PUBLIC_KEY_PATH")
@@ -93,7 +95,7 @@ func NewContainer() (*Container, error) {
 	gossipPort := "8080" // we could also make this more robust
 
 	// Usecases need to be created before gossip service if gossip service depends on them
-	syncDataUC := usecases.NewSyncDataUseCase(userRepo)
+	syncDataUC := usecases.NewSyncDataUseCase(userRepo, clock, expirationDuration)
 
 	// Create gossip service
 	gossipService := gossip.NewGossipService(
@@ -113,6 +115,7 @@ func NewContainer() (*Container, error) {
 	queryUserDataUC := usecases.NewQueryUserDataUseCase(userRepo)
 	getRandomUsersUC := usecases.NewGetRandomUsersUseCase(userRepo)
 	registerUserUC := usecases.NewRegisterUserUseCase(userRepo, gossipService, clock)
+	announceUseCase := usecases.NewAnnounceUseCase(userRepo, gossipService, clock, expirationDuration)
 
 	// Initialize handlers
 	getTimeHandler := handlers.NewGetTimeHandler(getTimeUsecase)
@@ -122,6 +125,7 @@ func NewContainer() (*Container, error) {
 	queryUserHandler := handlers.NewQueryUserDataHandler(queryUserDataUC)
 	registerUserHandler := handlers.NewRegisterUserHandler(registerUserUC)
 	pubKeyHandler := handlers.NewPubKeyHandler(myPrivKey, mySignature)
+	AnnounceHandler := handlers.NewAnnounceHandler(announceUseCase)
 
 	return &Container{
 		GetTimeHandler:        getTimeHandler,
@@ -131,6 +135,7 @@ func NewContainer() (*Container, error) {
 		SyncDataHandler:       syncDataHandler,
 		NotifyUpdateHandler:   notifyUpdateHandler,
 		PubKeyHandler:         pubKeyHandler,
+		AnnounceHandler:       AnnounceHandler,
 		GossipService:         gossipService,
 	}, nil
 }
