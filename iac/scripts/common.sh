@@ -11,24 +11,31 @@ IAC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # Project root
 REPO_ROOT="$(cd "$IAC_DIR/.." && pwd)"
 
-NETWORK_NAME="eaglechat-net"
-CA_KEY="$REPO_ROOT/ca.key"
-TMP_CERT_DIR="$IAC_DIR/tmp_certs"
-COMMON_CA_DIR="$TMP_CERT_DIR/common_ca"
-COMMON_CA_PUB_KEY="$COMMON_CA_DIR/ca_public_key.pem"
+CA_SK="$REPO_ROOT/ca.key"
 
-# --- Helper Functions ---
+export TMP_CERT_DIR="$IAC_DIR/tmp_certs"
+export COMMON_CA_DIR="$TMP_CERT_DIR/common_ca"
+export CA_PK="$COMMON_CA_DIR/ca_public_key.pem"
+export NETWORK_NAME="eaglechat-net"
+export MANAGER_ALIAS="id_manager.eaglechat.local"
+export CT_NAME_PREFIX="eaglechat."
+
+prefix_ct_name() {
+  local name=$1
+
+  echo "$CT_NAME_PREFIX$name"
+}
 
 # Generates a new Certificate Authority (CA) key pair if one doesn't exist.
 generate_ca() {
   mkdir -p "$COMMON_CA_DIR"
-  if [ -f "$CA_KEY" ] && [ -f "$COMMON_CA_PUB_KEY" ]; then
+  if [ -f "$CA_SK" ] && [ -f "$CA_PK" ]; then
     echo "====> CA key pair already exists. Skipping generation."
     return
   fi
   echo "====> Generating new CA key pair..."
-  openssl genrsa -out "$CA_KEY" 4096
-  openssl rsa -in "$CA_KEY" -pubout -out "$COMMON_CA_PUB_KEY"
+  openssl genrsa -out "$CA_SK" 4096
+  openssl rsa -in "$CA_SK" -pubout -out "$CA_PK"
   echo "CA key pair generated."
 }
 
@@ -38,7 +45,7 @@ generate_ca() {
 generate_manager_credentials() {
   local manager_cn="$1"
   local output_dir="$2"
-  
+
   echo "====> Generating credentials for $manager_cn..."
   mkdir -p "$output_dir"
 
@@ -51,65 +58,146 @@ generate_manager_credentials() {
   openssl rsa -in "$priv_key_path" -pubout -out "$pub_key_path"
 
   # 2. Sign the ID Manager's public key with the CA private key using PSS padding
-  openssl dgst -sha256 -sigopt rsa_padding_mode:pss -sign "$CA_KEY" -out "$signature_path" "$pub_key_path"
+  openssl dgst -sha256 -sigopt rsa_padding_mode:pss -sign "$CA_SK" -out "$signature_path" "$pub_key_path"
 
   # 3. Copy the CA's public key for the container to use
-  cp "$COMMON_CA_PUB_KEY" "$output_dir/ca_public_key.pem"
-  
+  cp "$CA_PK" "$output_dir/ca_public_key.pem"
+
   echo "Credentials for $manager_cn created in $output_dir"
+}
+
+create_manager() {
+  local name=$1
+  name=$(prefix_ct_name "$name")
+
+  local credentials_path="$TMP_CERT_DIR/$name"
+
+  generate_manager_credentials "$name.eaglechat.local" "$credentials_path"
+
+  echo "Starting manager: ${name}"
+  docker run -d --rm \
+    --name "${name}" \
+    --network "${NETWORK_NAME}" \
+    --network-alias "${MANAGER_ALIAS}" \
+    -v "$credentials_path":/etc/eaglechat/certs:ro \
+    -e ID_MANAGER_PRIV_KEY_PATH=/etc/eaglechat/certs/private_key.pem \
+    -e ID_MANAGER_SIGNATURE_PATH=/etc/eaglechat/certs/id_manager_signature.pem \
+    -e CA_PUBLIC_KEY_PATH=/etc/eaglechat/certs/ca_public_key.pem \
+    -e COMMON_NAME="$name.eaglechat.local" \
+    eaglechat-id-manager
+}
+
+start_client() {
+  local name=$1
+  name=$(prefix_ct_name "$name")
+
+  echo "Starting client: ${name}"
+  docker run -it \
+    --name "${name}" \
+    --network "${NETWORK_NAME}" \
+    -v "$CA_PK":/etc/eaglechat/certs/ca_public_key.pem:ro \
+    -e CA_PUBLIC_KEY_PATH=/etc/eaglechat/certs/ca_public_key.pem \
+    -e TZ="${TZ:-America/Havana}" \
+    eaglechat-client
 }
 
 # Builds the Docker images for the ID Manager and Client.
 build_docker_images() {
-    echo "====> Building Docker images..."
-    docker build -t eaglechat-id-manager -f "$IAC_DIR/id_manager/Dockerfile" "$REPO_ROOT"
-    docker build -t eaglechat-client -f "$IAC_DIR/client/Dockerfile" "$REPO_ROOT"
+  echo "====> Building Docker images..."
+  docker build -t eaglechat-id-manager -f "$IAC_DIR/id_manager/Dockerfile" "$REPO_ROOT"
+  docker build -t eaglechat-client -f "$IAC_DIR/client/Dockerfile" "$REPO_ROOT"
 }
 
 # Creates the Docker network if it doesn't already exist.
 create_network() {
-    echo -e "\n====> Creating network '${NETWORK_NAME}' if it doesn't exist..."
-    if ! docker network ls --format '{{.Name}}' | grep -q "^${NETWORK_NAME}$"; then
-      docker network create --driver overlay --attachable "$NETWORK_NAME"
-    else
-      echo "Network '${NETWORK_NAME}' already exists."
-    fi
+  echo -e "\n====> Creating network '${NETWORK_NAME}' if it doesn't exist..."
+  if ! docker network ls --format '{{.Name}}' | grep -q "^${NETWORK_NAME}$"; then
+    docker network create --driver overlay --attachable "$NETWORK_NAME"
+  else
+    echo "Network '${NETWORK_NAME}' already exists."
+  fi
 }
 
-# Stops and removes a list of containers.
-# $@: A list of container names to stop and remove.
+# Stops and removes all containers with the 'eaglechat.' prefix.
 stop_and_remove_containers() {
-    local containers=("$@")
-    echo "====> Stopping and removing containers..."
-    for container in "${containers[@]}"; do
-        if docker ps -a --format '{{.Names}}' | grep -q "^${container}$"; then
-            echo "Stopping and removing container: ${container}"
-            docker stop "${container}" > /dev/null
-            docker rm "${container}" > /dev/null
-        else
-            echo "Container '${container}' not found, skipping."
-        fi
-    done
+  echo "====> Stopping and removing all containers with 'eaglechat.' prefix..."
+  container_ids=$(docker ps -a --filter "name=$CT_NAME_PREFIX" -q)
+
+  if [ -z "$container_ids" ]; then
+    echo "No containers with prefix 'eaglechat.' found."
+    return
+  fi
+
+  echo "Stopping and removing containers..."
+  docker stop $container_ids
+  docker rm $container_ids
+  echo "Container cleanup complete."
 }
 
-# Removes the Docker network.
-# $1: The name of the network to remove.
+# Stops and removes a single container by its short name.
+# $1: The short name of the container (e.g., "id-manager-1").
+remove_container() {
+  local name=$1
+  if [ -z "$name" ]; then
+    echo "Error: container name not provided."
+    return 1
+  fi
+  local prefixed_name
+  prefixed_name=$(prefix_ct_name "$name")
+
+  echo "====> Attempting to stop and remove container: $prefixed_name"
+  if docker ps -a --format '{{.Names}}' | grep -q "^${prefixed_name}$"; then
+    docker stop "$prefixed_name" >/dev/null
+    docker rm "$prefixed_name" >/dev/null
+    echo "Container '$prefixed_name' removed successfully."
+  else
+    echo "Container '$prefixed_name' not found, skipping."
+  fi
+}
+
+# Lists the short names of all containers with the 'eaglechat.' prefix.
+list_containers() {
+  echo "====> Listing all containers with prefix '$CT_NAME_PREFIX'..."
+  docker ps -a --filter "name=$CT_NAME_PREFIX" --format '{{.Names}}' | sed "s/^$CT_NAME_PREFIX//"
+}
+
 remove_network() {
-    local network_to_remove="$1"
-    echo -e "\n====> Removing network '${network_to_remove}'..."
-    if docker network ls --format '{{.Name}}' | grep -q "^${network_to_remove}$"; then
-        docker network rm "${network_to_remove}" || echo "Warning: Could not remove network '${network_to_remove}'. It may still be in use."
-    else
-        echo "Network '${network_to_remove}' not found, skipping removal."
-    fi
+  echo -e "\n====> Removing network '${NETWORK_NAME}'..."
+
+  if docker network ls --format '{{.Name}}' | grep -q "^${NETWORK_NAME}$"; then
+    docker network rm "${NETWORK_NAME}" || echo "Warning: Could not remove network '${NETWORK_NAME}'. It may still be in use."
+  else
+    echo "Network '${NETWORK_NAME}' not found, skipping removal."
+  fi
 }
 
 # Removes temporary credentials.
 cleanup_credentials() {
-    echo -e "\n====> Cleaning up temporary credentials..."
-    rm -f "$CA_KEY" "$COMMON_CA_PUB_KEY"
-    rm -rf "$TMP_CERT_DIR"
-    echo "Temporary credentials removed."
+  echo -e "\n====> Cleaning up temporary credentials..."
+  rm -f "$CA_SK" "$CA_PK"
+  rm -rf "$TMP_CERT_DIR"
+  echo "Temporary credentials removed."
+}
+
+initialize() {
+  local build_arg=$1
+  generate_ca
+  if [ "$build_arg" == "--build" ]; then
+    build_docker_images
+  else
+    echo "====> Skipping image builds. Use --build to force a build."
+  fi
+  create_network
+
+  echo "Initialization complete"
+}
+
+cleanup() {
+  stop_and_remove_containers
+  remove_network
+  cleanup_credentials
+
+  echo "Cleanup complete"
 }
 
 echo "common.sh sourced successfully"
