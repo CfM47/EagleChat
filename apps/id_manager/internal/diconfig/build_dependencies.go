@@ -108,6 +108,7 @@ func NewContainer() (*Container, error) {
 		myPrivKey,
 		mySignature,
 		caPubKey,
+		clock,
 	)
 
 	// Initialize other use cases that need the notifier

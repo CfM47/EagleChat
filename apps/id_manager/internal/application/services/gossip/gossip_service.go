@@ -5,6 +5,7 @@ import (
 	"context"
 	"eaglechat/apps/id_manager/internal/application/usecases"
 	"eaglechat/apps/id_manager/internal/application/usecases/gossip"
+	"eaglechat/common/clock"
 	"eaglechat/common/ezlog"
 	"eaglechat/common/simplecrypto"
 	"eaglechat/common/simplecrypto/rsa"
@@ -14,6 +15,7 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
+	"sort"
 	"sync"
 	"time"
 )
@@ -36,6 +38,8 @@ type GossipService struct {
 
 	// Logger context
 	logCtx context.Context
+
+	clock clock.Clock
 }
 
 // NewGossipService creates and returns a new GossipService instance.
@@ -49,6 +53,7 @@ func NewGossipService(
 	myPrivKey *rsa.PrivateKey,
 	mySignature []byte,
 	caPubKey *rsa.PublicKey,
+	clock clock.Clock,
 ) *GossipService {
 	return &GossipService{
 		syncUseCase:  syncUseCase,
@@ -65,6 +70,7 @@ func NewGossipService(
 		mySignature: mySignature,
 		caPubKey:    caPubKey,
 		logCtx:      ezlog.NewLoggerContext("gossip service"),
+		clock:       clock,
 	}
 }
 
@@ -74,7 +80,8 @@ func (s *GossipService) Start() {
 		for {
 			select {
 			case <-s.ticker.C:
-				s.performPeriodicSync()
+				s.performPeriodicDataSync()
+				s.performPeriodicClockSync()
 			case <-s.stopChan:
 				s.ticker.Stop()
 				return
@@ -283,7 +290,7 @@ func (s *GossipService) performSecureGossipExchange(ctx context.Context, peerAdd
 	return nil
 }
 
-func (s *GossipService) performPeriodicSync() {
+func (s *GossipService) performPeriodicDataSync() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -303,6 +310,109 @@ func (s *GossipService) performPeriodicSync() {
 	if err := s.TriggerSyncFromPeer(ctx, peerAddress); err != nil {
 		ezlog.Log(s.logCtx).Errorf("GossipService: Periodic sync failed: %v", err)
 	}
+}
+
+type timeSample struct {
+	time time.Time
+}
+
+func (s *GossipService) performPeriodicClockSync() {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	peers, err := s.peerProvider.DiscoverIDManagerIPs(ctx)
+	if err != nil {
+		ezlog.Log(s.logCtx).Errorf("GossipService: Failed to discover peers for clock sync: %v", err)
+		return
+	}
+
+	validPeers := s.getAllValidPeers(peers)
+	if len(validPeers) == 0 {
+		ezlog.Log(s.logCtx).Warn("GossipService: No valid peers to sync clock with.")
+		return
+	}
+
+	samples := make(chan timeSample, len(validPeers))
+	var wg sync.WaitGroup
+	for _, peerIP := range validPeers {
+		wg.Add(1)
+		go func(peerIP string) {
+			defer wg.Done()
+			if sample, ok := s.fetchPeerTime(ctx, peerIP); ok {
+				samples <- sample
+			}
+		}(peerIP)
+	}
+
+	wg.Wait()
+	close(samples)
+
+	var times []time.Time
+	for sample := range samples {
+		times = append(times, sample.time)
+	}
+
+	if len(times) == 0 {
+		return
+	}
+
+	target := medianTime(times)
+
+	// 🔹 Ajuste Berkeley
+	s.clock.Sync(target)
+	ezlog.Log(s.logCtx).Infof("GossipService: Clock synced to %v", target)
+
+}
+
+func medianTime(times []time.Time) time.Time {
+	sort.Slice(times, func(i, j int) bool {
+		return times[i].Before(times[j])
+	})
+
+	n := len(times)
+	mid := n / 2
+
+	if n%2 == 1 {
+		return times[mid]
+	}
+
+	// Para n par, promedio entre los dos centrales
+	t1 := times[mid-1]
+	t2 := times[mid]
+
+	return t1.Add(t2.Sub(t1) / 2)
+}
+
+func (s *GossipService) fetchPeerTime(ctx context.Context, peerIP string) (timeSample, bool) {
+	url := fmt.Sprintf("http://%s:%s/time", peerIP, s.GetPort())
+
+	start := time.Now()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return timeSample{}, false
+	}
+
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return timeSample{}, false
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return timeSample{}, false
+	}
+
+	var peerTime time.Time
+	if err := json.NewDecoder(resp.Body).Decode(&peerTime); err != nil {
+		return timeSample{}, false
+	}
+
+	rtt := time.Since(start)
+	estimated := peerTime.Add(rtt / 2)
+
+	return timeSample{
+		time: estimated,
+	}, true
 }
 
 func (s *GossipService) selectRandomPeer(peers []net.IP) (string, bool) {
