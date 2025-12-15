@@ -1,9 +1,11 @@
 package iftest
 
 import (
-	"eaglechat/apps/client/internal/domain/entities"
 	"sort"
 	"testing"
+	"time"
+
+	"eaglechat/apps/client/internal/domain/entities"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,15 +19,15 @@ func runChatTests(t *testing.T, factory RepoFactory) {
 		defer cleanup()
 
 		privKeyA := getTestKeys(0)
-		userA := entities.NewUser("user-A", "Alice", *privKeyA.PublicKey())
+		userA := entities.NewUser("user-A", "Alice", *privKeyA.PublicKey(), time.Now())
 		profileA := entities.NewOwnProfile(userA, *privKeyA)
 		require.NoError(t, repo.SaveOwnProfile(profileA))
 
 		privKeyB := getTestKeys(1)
-		userB := entities.NewUser("user-B", "Bob", *privKeyB.PublicKey())
+		userB := entities.NewUser("user-B", "Bob", *privKeyB.PublicKey(), time.Now())
 
 		// Act
-		msg := entities.NewMessage(userB, userA, "Hello")
+		msg := entities.NewMessage(userB, userA, "Hello", time.Now())
 		require.NoError(t, repo.SaveMessage(msg))
 
 		// Assert
@@ -42,13 +44,13 @@ func runChatTests(t *testing.T, factory RepoFactory) {
 		defer cleanup()
 
 		privKeyA := getTestKeys(0)
-		userA := entities.NewUser("user-A", "Alice", *privKeyA.PublicKey())
+		userA := entities.NewUser("user-A", "Alice", *privKeyA.PublicKey(), time.Now())
 		profileA := entities.NewOwnProfile(userA, *privKeyA)
 		require.NoError(t, repo.SaveOwnProfile(profileA))
 
 		privKeyB := getTestKeys(1)
-		userB := entities.NewUser("user-B", "Bob", *privKeyB.PublicKey())
-		insertChat(t, repo, []entities.Message{entities.NewMessage(userB, userA, "Hi")})
+		userB := entities.NewUser("user-B", "Bob", *privKeyB.PublicKey(), time.Now())
+		insertChat(t, repo, []entities.Message{entities.NewMessage(userB, userA, "Hi", time.Now())})
 
 		// Act
 		incrementUnreadCount(t, repo, userB.ID, 3)
@@ -67,13 +69,13 @@ func runChatTests(t *testing.T, factory RepoFactory) {
 		defer cleanup()
 
 		privKeyA := getTestKeys(0)
-		userA := entities.NewUser("user-A", "Alice", *privKeyA.PublicKey())
+		userA := entities.NewUser("user-A", "Alice", *privKeyA.PublicKey(), time.Now())
 		profileA := entities.NewOwnProfile(userA, *privKeyA)
 		require.NoError(t, repo.SaveOwnProfile(profileA))
 
 		privKeyB := getTestKeys(1)
-		userB := entities.NewUser("user-B", "Bob", *privKeyB.PublicKey())
-		insertChat(t, repo, []entities.Message{entities.NewMessage(userB, userA, "Hi")})
+		userB := entities.NewUser("user-B", "Bob", *privKeyB.PublicKey(), time.Now())
+		insertChat(t, repo, []entities.Message{entities.NewMessage(userB, userA, "Hi", time.Now())})
 		incrementUnreadCount(t, repo, userB.ID, 5)
 
 		// Act
@@ -93,12 +95,12 @@ func runChatTests(t *testing.T, factory RepoFactory) {
 		defer cleanup()
 
 		privKeyA := getTestKeys(0)
-		userA := entities.NewUser("user-A", "Alice", *privKeyA.PublicKey())
+		userA := entities.NewUser("user-A", "Alice", *privKeyA.PublicKey(), time.Now())
 		profileA := entities.NewOwnProfile(userA, *privKeyA)
 		require.NoError(t, repo.SaveOwnProfile(profileA))
 
 		privKeyB := getTestKeys(1)
-		userB := entities.NewUser("user-B", "Bob", *privKeyB.PublicKey())
+		userB := entities.NewUser("user-B", "Bob", *privKeyB.PublicKey(), time.Now())
 
 		chat := generateChat(userA, userB, 2, 3)
 		insertChat(t, repo, chat)

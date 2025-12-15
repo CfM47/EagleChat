@@ -2,12 +2,13 @@ package controller
 
 import (
 	"context"
+	"fmt"
+	"log"
+
 	"eaglechat/apps/client/internal/domain/entities"
 	"eaglechat/apps/client/internal/ui/models"
 	"eaglechat/common/ezlog"
 	"eaglechat/common/simplecrypto/rsa"
-	"fmt"
-	"log"
 )
 
 func (c *Controller) handleRegistration(ctx context.Context, name string) {
@@ -24,7 +25,7 @@ func (c *Controller) handleRegistration(ctx context.Context, name string) {
 	}
 
 	// 2. Call the registerer to get a user ID from the ID Manager
-	user, err := c.registerer.Register(ctx, name, *privKey)
+	user, err := c.registerer.Register(ctx, name, *privKey, c.CAPubkey)
 	if err != nil {
 		msg := fmt.Sprintf("Failed to register with ID manager: %v", err)
 		ezlog.Log(ctx).Error(msg)

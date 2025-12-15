@@ -43,7 +43,18 @@ When two ID Managers (A and B) attempt to gossip, they perform a mutual authenti
 4.  **Challenge-Response (Proof of Possession):** To prevent replay attacks, the managers can perform a challenge-response. Manager A encrypts a random nonce with Manager B's trusted public key. Only the real Manager B (who possesses the corresponding private key) can decrypt the nonce and send it back, proving its identity.
 5.  **Trust Established:** Once the handshake is complete, a secure, authenticated channel is established for gossip.
 
-## 3. Message Security
+## 4. Client-to-Client Communication
+
+When Client A wants to send a message to Client B, assuming Client A already has Client B's public key and ip address:
+
+1. Client A sends a nonce challenge to Client B to prove it is online.
+2. Client B responds by decrypting the nonce with its private key, sends it back to A, proving its identity to them.
+  - Client B doesn't need to verify Client A's identity, given that all clients ever share are encrypted and signed messages.
+3. Knowing that Client B is who it claims to be, Client A proceeds to send whatever messages it wants to it, either from A or from other users.
+  - When an OK response is received, Client A can be sure messages it had for B have reached it, and so can safely delete them from cache.
+
+
+## 5. Message Security
 
 Communication in the network relies on two distinct cryptographic processes:
 
@@ -69,7 +80,7 @@ To ensure only the intended recipient can read a message while maintaining high 
 
 Only Client B, using their private RSA key, can decrypt the AES key. Once the AES key is revealed, it can be used to quickly decrypt the actual message.
 
-## 4. Trust Model: Trust On First Use (TOFU)
+## 6. Trust Model: Trust On First Use (TOFU)
 
 To prevent Man-in-the-Middle (MITM) attacks where an attacker might substitute a user's public key, the network will adopt the **Trust On First Use (TOFU)** model.
 
@@ -84,6 +95,3 @@ To prevent Man-in-the-Middle (MITM) attacks where an attacker might substitute a
 - **Vulnerability:** This model's primary vulnerability is a potential MITM attack during the **very first key exchange**. The system trusts that the first key received for a user is the correct one.
 - **Mitigation:** If a client ever queries an ID Manager and receives a *different* public key for a user it already has in its cache, the client application **MUST** treat this as a critical security event. It should alert the user that the remote identity has changed and that proceeding may be unsafe.
 
-## 5. Key Management
-
-- **Recovery:** This design does not currently specify a key recovery mechanism. If a user loses their private key (e.g., by losing their device), their identity is considered **unrecoverable**. They will need to generate a new key pair and establish a new identity on the network.

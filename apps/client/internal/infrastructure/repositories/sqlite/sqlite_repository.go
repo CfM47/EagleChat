@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"eaglechat/apps/client/internal/domain/repositories"
+
 	_ "modernc.org/sqlite"
 )
 
@@ -21,7 +22,7 @@ type sqliteRepository struct {
 func NewSQLiteRepository(path string) (repositories.ClientRepository, error) {
 	// Ensure the directory for the database file exists.
 	dir := filepath.Dir(path)
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return nil, fmt.Errorf("failed to create database directory: %w", err)
 	}
 

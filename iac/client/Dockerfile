@@ -25,6 +25,8 @@ RUN CGO_ENABLED=0 GOOS=linux go build -mod=vendor -o /client ./apps/client/cmd/m
 # Stage 2: Create the final, minimal image
 FROM alpine:3.22.2
 
+RUN apk add --no-cache tzdata
+
 COPY --from=builder /client /client
 
 CMD ["/client"]

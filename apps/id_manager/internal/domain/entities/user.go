@@ -22,12 +22,12 @@ type User struct {
 // ensuring that time comparisons are deterministic and testable, especially after
 // serialization and deserialization (e.g., to/from JSON), which also removes
 // the monotonic clock reading.
-func NewUser(id, username string, publicKeyPEM []byte) *User {
+func NewUser(id, username string, publicKeyPEM []byte, lastSeen time.Time) *User {
 	return &User{
 		ID:           id,
 		Username:     username,
 		PublicKeyPEM: publicKeyPEM,
-		LastSeen:     time.Now().UTC().Round(0),
+		LastSeen:     lastSeen.UTC().Round(0),
 	}
 }
 

@@ -1,11 +1,12 @@
 package tui
 
 import (
+	"fmt"
+	"time"
+
 	"eaglechat/apps/client/internal/ui"
 	"eaglechat/apps/client/internal/ui/models"
 	"eaglechat/common/ezlog"
-	"fmt"
-	"time"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -56,7 +57,10 @@ func newChatView(app *tview.Application, actionsChan chan<- ui.UserAction) *Chat
 		case 'j':
 			ezlog.Log(ctx).Debug("Chat list: 'j' pressed, moving down.")
 			currentItem := cv.chatList.GetCurrentItem()
-			cv.chatList.SetCurrentItem((currentItem + 1) % cv.chatList.GetItemCount())
+			itemCount := cv.chatList.GetItemCount()
+			if itemCount > 0 {
+				cv.chatList.SetCurrentItem((currentItem + 1) % itemCount)
+			}
 			return nil
 		case 'k':
 			ezlog.Log(ctx).Debug("Chat list: 'k' pressed, moving up.")
@@ -149,7 +153,7 @@ func (t *TUI) renderChatView(model models.ChatViewModel) {
 	if model.ActiveChat != nil {
 		t.chatView.messageView.SetTitle(fmt.Sprintf("Chat with %s", model.ActiveChat.Name))
 		for _, msg := range model.ActiveChat.Messages {
-			timestamp := msg.Timestamp.Format(time.Kitchen)
+			timestamp := msg.Timestamp.Local().Format(time.Kitchen)
 			fmt.Fprintf(t.chatView.messageView, "[gray]%s [white]%s: [white]%s\n", timestamp, msg.Author, msg.Content)
 		}
 	} else {

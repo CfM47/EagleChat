@@ -9,6 +9,7 @@ set -e
 
 # Navigate to the script's directory to ensure docker-compose is run from the correct context
 cd "$(dirname "$0")"
+source ./scripts/common.sh
 
 SCENARIO=$1
 
@@ -22,13 +23,8 @@ fi
 
 echo "====> Environment stopped."
 
-echo "====> Verifying network cleanup..."
-NETWORK_NAME="iac_eaglechat-net" # Compose prefixes the project name (directory name)
+cleanup_credentials
 
-if docker network ls --format '{{.Name}}' | grep -q "^${NETWORK_NAME}$"; then
-  echo "Network '${NETWORK_NAME}' still exists. Attempting to remove it..."
-  # This command might fail if a container is still attached, so we add || true to prevent script exit
-  docker network rm "${NETWORK_NAME}" || echo "Warning: Could not remove network. It may still be in use by a dangling container."
-else
-  echo "Network removed successfully."
-fi
+echo "====> Verifying network cleanup..."
+COMPOSE_NETWORK_NAME="iac_eaglechat-net" # Compose prefixes the project name (directory name)
+remove_network "$COMPOSE_NETWORK_NAME"

@@ -1,9 +1,11 @@
 package iftest
 
 import (
+	"testing"
+	"time"
+
 	"eaglechat/apps/client/internal/domain/entities"
 	"eaglechat/apps/client/internal/domain/repositories"
-	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,7 +19,7 @@ func runProfileTests(t *testing.T, factory RepoFactory) {
 		defer cleanup()
 
 		privKey := getTestKeys(0)
-		user := entities.NewUser("user-1", "test-user", *privKey.PublicKey())
+		user := entities.NewUser("user-1", "test-user", *privKey.PublicKey(), time.Now())
 		expectedProfile := entities.NewOwnProfile(user, *privKey)
 
 		// Act
@@ -60,7 +62,7 @@ func runProfileTests(t *testing.T, factory RepoFactory) {
 
 		// Create and save initial profile
 		privKey := getTestKeys(1)
-		user1 := entities.NewUser("user-1", "user-one", *privKey.PublicKey())
+		user1 := entities.NewUser("user-1", "user-one", *privKey.PublicKey(), time.Now())
 		initialProfile := entities.NewOwnProfile(user1, *privKey)
 		require.NoError(t, repo.SaveOwnProfile(initialProfile))
 

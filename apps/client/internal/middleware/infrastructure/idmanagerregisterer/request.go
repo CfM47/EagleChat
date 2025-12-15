@@ -3,13 +3,15 @@ package idmanagerregisterer
 import (
 	"bytes"
 	"context"
-	"eaglechat/apps/client/internal/domain/entities"
-	"eaglechat/common/ezlog"
-	"eaglechat/common/simplecrypto/rsa"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
+
+	"eaglechat/apps/client/internal/domain/entities"
+	"eaglechat/common/ezlog"
+	"eaglechat/common/simplecrypto/rsa"
 )
 
 type requestBody struct {
@@ -21,11 +23,15 @@ type responseBody struct {
 	ID string `json:"id"`
 }
 
-// performHTTPRequest sends the final HTTP registration request.
-func (r *registererImpl) performHTTPRequest(ctx context.Context, username string, pk *rsa.PublicKey, idManagerIP string) (entities.User, error) {
-	ezlog.Log(ctx).Infof("Performing HTTP registration request to ID Manager at %s:%s", idManagerIP, r.idManagerPort)
+// requestRegistration sends the final HTTP registration request.
+func (r *registererImpl) requestRegistration(ctx context.Context, username string, pk *rsa.PublicKey, idManagerIP string, client *http.Client) (entities.User, error) {
+	if client == nil {
+		client = &http.Client{}
+	}
 
-	url := fmt.Sprintf("http://%s:%s/users/register", idManagerIP, r.idManagerPort)
+	url := fmt.Sprintf("http://%s:%d/users/register", idManagerIP, r.idManagerPort)
+
+	ezlog.Log(ctx).Infof("Performing HTTP registration request to ID Manager at %s", url)
 
 	pubKeyBytes, err := pk.ToBytes()
 	if err != nil {
@@ -52,7 +58,6 @@ func (r *registererImpl) performHTTPRequest(ctx context.Context, username string
 	}
 	req.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
 		msg := fmt.Sprintf("HTTP request to %s failed: %v", url, err)
@@ -76,5 +81,6 @@ func (r *registererImpl) performHTTPRequest(ctx context.Context, username string
 
 	ezlog.Log(ctx).Infof("Successfully registered with ID Manager. Received user ID: %s", res.ID)
 
-	return entities.NewUser(res.ID, username, *pk), nil
+	// FIXME: we shouldn't have LastSeen for the client itself
+	return entities.NewUser(res.ID, username, *pk, time.Time{}), nil
 }

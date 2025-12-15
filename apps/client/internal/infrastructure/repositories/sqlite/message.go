@@ -1,9 +1,10 @@
 package sqliterepository
 
 import (
+	"time"
+
 	"eaglechat/apps/client/internal/domain/entities"
 	"eaglechat/common/simplecrypto/rsa"
-	"time"
 )
 
 // SaveMessage stores a message in the repository, ignoring duplicates.
@@ -118,4 +119,21 @@ func (r *sqliteRepository) GetChat(partnerID entities.UserID) ([]entities.Messag
 	}
 
 	return messages, rows.Err()
+}
+
+func (r *sqliteRepository) MessageExists(messageID string, senderID entities.UserID) (bool, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	query := `
+		SELECT 1 FROM message WHERE message_id = ? AND sender_id = ? LIMIT 1;
+	`
+
+	rows, err := r.db.Query(query, messageID, senderID)
+	if err != nil {
+		return false, err
+	}
+	defer rows.Close()
+
+	return rows.Next(), nil
 }

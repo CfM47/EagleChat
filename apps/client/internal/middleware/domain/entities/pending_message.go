@@ -19,9 +19,9 @@ type MessageTarget struct {
 	TargetID  entities.UserID
 }
 
-func NewMessageTarget(ID string, target entities.UserID) MessageTarget {
+func NewMessageTarget(messageID string, target entities.UserID) MessageTarget {
 	return MessageTarget{
-		MessageID: ID,
+		MessageID: messageID,
 		TargetID:  target,
 	}
 }

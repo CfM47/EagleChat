@@ -3,10 +3,11 @@ package middleware
 import (
 	"bytes"
 	"context"
+	"encoding/json"
+
 	"eaglechat/apps/client/internal/domain/entities"
 	"eaglechat/common/ezlog"
 	"eaglechat/common/simplecrypto"
-	"encoding/json"
 
 	middleware_entities "eaglechat/apps/client/internal/middleware/domain/entities"
 	messagecache "eaglechat/apps/client/internal/middleware/domain/repositories/messagecache"
@@ -23,23 +24,19 @@ func (m *Middleware) messageReceiver(ctx context.Context) {
 		case <-m.Done():
 			return
 
-		case rawMsg := <-m.p2pConnPool.Receive():
-			var pendingMsg middleware_entities.PendingMessage
-			if err := json.Unmarshal(rawMsg, &pendingMsg); err != nil {
-				ezlog.Log(ctx).Errorf("Failed to unmarshal incoming message: %v", err)
-				continue
-			}
+		case pendingMsgs := <-m.clientConnPool.Receive():
+			for _, pendingMsg := range pendingMsgs {
+				if pendingMsg.Target.TargetID == m.ownProfile.User.ID {
+					ezlog.Log(ctx).Infof("Received message for self: %s", pendingMsg.Target.MessageID)
 
-			if pendingMsg.Target.TargetID == m.ownUser.ID {
-				ezlog.Log(ctx).Infof("Received message for self: %s", pendingMsg.Target.MessageID)
+					messageCtx := ezlog.NewLoggerContext("message-for-self-handler")
+					m.handleMessageForSelf(messageCtx, pendingMsg)
+				} else {
+					ezlog.Log(ctx).Infof("Received message for other user %s: %s", pendingMsg.Target.TargetID, pendingMsg.Target.MessageID)
 
-				messageCtx := ezlog.NewLoggerContext("message-for-self-handler")
-				m.handleMessageForSelf(messageCtx, pendingMsg)
-			} else {
-				ezlog.Log(ctx).Infof("Received message for other user %s: %s", pendingMsg.Target.TargetID, pendingMsg.Target.MessageID)
-
-				messageCtx := ezlog.NewLoggerContext("message-for-other-handler")
-				m.handleMessageForOther(messageCtx, pendingMsg)
+					messageCtx := ezlog.NewLoggerContext("message-for-other-handler")
+					m.handleMessageForOther(messageCtx, pendingMsg)
+				}
 			}
 		}
 	}
@@ -54,7 +51,7 @@ func (m *Middleware) handleMessageForSelf(ctx context.Context, pendingMsg middle
 		return
 	}
 
-	plaintext, senderPubKey, err := simplecrypto.Open(&envelope, &m.sk)
+	plaintext, senderPubKey, err := simplecrypto.Open(&envelope, &m.ownProfile.PrivateKey)
 	if err != nil {
 		ezlog.Log(ctx).Errorf("Failed to open secure envelope for own message: %v", err)
 		return

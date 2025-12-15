@@ -1,8 +1,9 @@
 package entities
 
 import (
-	"eaglechat/apps/client/internal/domain/entities"
 	"net"
+
+	"eaglechat/apps/client/internal/domain/entities"
 )
 
 type UserData struct {
@@ -11,6 +12,13 @@ type UserData struct {
 	IP *net.IP
 }
 
+func NewUserData(user entities.User, IP *net.IP) UserData {
+	return UserData{
+		User: user,
+		IP:   IP,
+	}
+}
+
 func (d *UserData) GetUser() entities.User {
-	return entities.NewUser(string(d.ID), d.Name, d.PublicKey)
+	return entities.NewUser(string(d.ID), d.Name, d.PublicKey, d.LastSeen)
 }

@@ -1,17 +1,25 @@
 package services
 
 import (
+	"context"
+	"time"
+
 	"eaglechat/apps/client/internal/domain/entities"
 	middleware_entities "eaglechat/apps/client/internal/middleware/domain/entities"
 	"eaglechat/common/simplecrypto/rsa"
 )
 
-// IDManagerPool manages listening to new id managers broadcasts in the network
 type IDManagerPool interface {
-	GetAny() (middleware_entities.IDManagerConnection, error)
-	GetAll() ([]middleware_entities.IDManagerConnection, error)
+	QueryUsers(ctx context.Context, IDs []entities.UserID, omitDisconnected bool) (map[entities.UserID]middleware_entities.UserData, error)
+	AnnouncePresence(ctx context.Context) error
+	GetRandomConnectedUsers(ctx context.Context, count int) ([]middleware_entities.UserData, error)
+
+	Now(ctx context.Context) (time.Time, error)
+
 	Close() error
 	Done() <-chan struct{}
 }
 
-type IDManagerPoolBuilder func(privateKey rsa.PrivateKey, connectionBuilder middleware_entities.IDManagerConnBuilder, ownID entities.UserID) (IDManagerPool, error)
+type IDManagerPoolBuilder interface {
+	Build(ctx context.Context, ownProfile entities.OwnProfile, CAPubkey *rsa.PublicKey) (IDManagerPool, error)
+}

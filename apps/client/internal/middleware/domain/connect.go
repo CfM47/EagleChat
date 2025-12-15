@@ -2,26 +2,23 @@ package middleware
 
 import (
 	"context"
+
 	"eaglechat/apps/client/internal/domain/entities"
 	"eaglechat/apps/client/internal/domain/services"
-	middleware_entities "eaglechat/apps/client/internal/middleware/domain/entities"
 	message_cache "eaglechat/apps/client/internal/middleware/domain/repositories/messagecache"
 	user_cache "eaglechat/apps/client/internal/middleware/domain/repositories/usercache"
 	middleware_services "eaglechat/apps/client/internal/middleware/domain/services"
+	"eaglechat/common/clock"
 	"eaglechat/common/ezlog"
 	"eaglechat/common/simplecrypto/rsa"
-	"time"
 )
 
 type Connector struct {
 	messageCache message_cache.MessageCache
 
-	p2pPoolBuilder     middleware_services.P2PConnPoolBuilder
-	p2pDialer          middleware_entities.P2PDialer
-	p2pListenerStarter middleware_entities.P2PListenStarter
+	clientConnPoolBuilder middleware_services.ClientConnPoolBuilder
 
-	idManagerConnectionBuilder middleware_entities.IDManagerConnBuilder
-	iDManagerPoolBuilder       middleware_services.IDManagerPoolBuilder
+	iDManagerPoolBuilder middleware_services.IDManagerPoolBuilder
 
 	knownUsers user_cache.UserCacheRepository
 }
@@ -31,11 +28,8 @@ var _ services.Connector = (*Connector)(nil)
 func NewConnector(
 	messageCache message_cache.MessageCache,
 
-	p2pPoolBuilder middleware_services.P2PConnPoolBuilder,
-	p2pDialer middleware_entities.P2PDialer,
-	p2pListenerStarter middleware_entities.P2PListenStarter,
+	clientConnPoolBuilder middleware_services.ClientConnPoolBuilder,
 
-	idManagerConnectionBuilder middleware_entities.IDManagerConnBuilder,
 	idManagerPoolBuilder middleware_services.IDManagerPoolBuilder,
 
 	knownUsers user_cache.UserCacheRepository,
@@ -43,29 +37,26 @@ func NewConnector(
 	return Connector{
 		messageCache: messageCache,
 
-		p2pPoolBuilder:     p2pPoolBuilder,
-		p2pDialer:          p2pDialer,
-		p2pListenerStarter: p2pListenerStarter,
+		clientConnPoolBuilder: clientConnPoolBuilder,
 
-		idManagerConnectionBuilder: idManagerConnectionBuilder,
-		iDManagerPoolBuilder:       idManagerPoolBuilder,
+		iDManagerPoolBuilder: idManagerPoolBuilder,
 
 		knownUsers: knownUsers,
 	}
 }
 
-func (c Connector) Connect(ctx context.Context, listenPort uint16, user entities.User, sk rsa.PrivateKey) (services.Middleware, <-chan entities.Message, error) {
-	ezlog.Log(ctx).Infof("Connecting as user %s on port %d", user.Name, listenPort)
+func (c Connector) Connect(ctx context.Context, listenPort uint16, ownProfile entities.OwnProfile, CAPubkey *rsa.PublicKey) (services.Middleware, <-chan entities.Message, error) {
+	ezlog.Log(ctx).Infof("Connecting as user %s on port %d", ownProfile.User.Name, listenPort)
 	defer ezlog.Log(ctx).Info("Connector finished")
 
 	ezlog.Log(ctx).Info("Building ID Manager Pool")
-	iDManagerPool, err := c.iDManagerPoolBuilder(sk, c.idManagerConnectionBuilder, user.ID)
+	iDManagerPool, err := c.iDManagerPoolBuilder.Build(ctx, ownProfile, CAPubkey)
 	if err != nil {
 		return &Middleware{}, nil, err
 	}
 
 	ezlog.Log(ctx).Info("Building P2P Connection Pool")
-	p2pConnPool, err := c.p2pPoolBuilder(c.p2pDialer, c.p2pListenerStarter, listenPort)
+	clientConnPool, err := c.clientConnPoolBuilder.Build(ctx, ownProfile, listenPort)
 	if err != nil {
 		return &Middleware{}, nil, err
 	}
@@ -73,37 +64,34 @@ func (c Connector) Connect(ctx context.Context, listenPort uint16, user entities
 	messageChannel := make(chan entities.Message)
 
 	m := Middleware{
-		ownPort: listenPort,
-		ownUser: user,
-		sk:      sk,
+		ownPort:    listenPort,
+		ownProfile: ownProfile,
 
-		p2pConnections: make(map[entities.UserID]middleware_entities.P2PConnection),
-		messageCache:   c.messageCache,
+		messageCache: c.messageCache,
 
-		p2pConnPool: p2pConnPool,
+		clientConnPool: clientConnPool,
+		iDManagerPool:  iDManagerPool,
 
-		iDManagerPool: iDManagerPool,
-		knownUsers:    c.knownUsers,
+		knownUsers: c.knownUsers,
 
 		receivedMessages: (chan<- entities.Message)(messageChannel),
 
-		quit: make(chan struct{}),
+		clock: clock.NewClock(),
 
-		messageSenderTicker: time.NewTicker(messageSenderInterval),
-		announcementTicker:  time.NewTicker(presenceAnnouncerInterval),
+		quit: make(chan struct{}),
 	}
 
-	ezlog.Log(ctx).Info("Starting P2P listener...")
 	receiverCtx := ezlog.NewLoggerContext("message-receiver")
 	go m.messageReceiver(receiverCtx)
 
-	ezlog.Log(ctx).Info("Starting message sender...")
 	senderCtx := ezlog.NewLoggerContext("message-sender")
 	go m.messageSender(senderCtx)
 
-	ezlog.Log(ctx).Info("Starting presence announcer...")
 	announcerCtx := ezlog.NewLoggerContext("presence-announcer")
 	go m.presenceAnnouncer(announcerCtx)
+
+	synchronizerCtx := ezlog.NewLoggerContext("time-synchronizer")
+	go m.timeSynchronizer(synchronizerCtx)
 
 	return &m, (<-chan entities.Message)(messageChannel), nil
 }
