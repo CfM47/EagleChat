@@ -11,8 +11,7 @@ import (
 
 type IDManagerPool interface {
 	QueryUsers(ctx context.Context, IDs []entities.UserID, omitDisconnected bool) (map[entities.UserID]middleware_entities.UserData, error)
-	NotifyOfPendingMessages(context.Context, []middleware_entities.MessageTarget) error
-	GetPendingMessages(context.Context) ([]middleware_entities.PendingMessage, error)
+	AnnouncePresence(ctx context.Context) error
 	GetRandomConnectedUsers(ctx context.Context, count int) ([]middleware_entities.UserData, error)
 
 	Now(ctx context.Context) (time.Time, error)

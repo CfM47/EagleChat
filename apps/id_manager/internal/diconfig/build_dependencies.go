@@ -16,16 +16,15 @@ import (
 )
 
 type Container struct {
-	GetTimeHandler              handlers.Handler
-	QueryUserHandler            handlers.Handler
-	GetRandomUsersHandler       handlers.Handler
-	QueryPendingMessagesHandler handlers.Handler
-	AddPendingMessagesHandler   handlers.Handler
-	RegisterUserHandler         handlers.Handler
-	SyncDataHandler             handlers.Handler
-	NotifyUpdateHandler         handlers.Handler
-	PubKeyHandler               handlers.Handler
-	GossipService               *gossip.GossipService
+	GetTimeHandler        handlers.Handler
+	QueryUserHandler      handlers.Handler
+	GetRandomUsersHandler handlers.Handler
+	RegisterUserHandler   handlers.Handler
+	SyncDataHandler       handlers.Handler
+	NotifyUpdateHandler   handlers.Handler
+	PubKeyHandler         handlers.Handler
+	AnnounceHandler       handlers.Handler
+	GossipService         *gossip.GossipService
 }
 
 func NewContainer() (*Container, error) {
@@ -40,6 +39,7 @@ func NewContainer() (*Container, error) {
 
 	// Config
 	gossipInterval := 10 * time.Second
+	expirationDuration := 30 * time.Second
 
 	// --- Load CA Public Key ---
 	caPubKeyPath := os.Getenv("CA_PUBLIC_KEY_PATH")
@@ -82,7 +82,6 @@ func NewContainer() (*Container, error) {
 
 	// Initialize repositories
 	userRepo := persistence.NewJSONUserRepository(filepath.Join(dataDir, "users.json"), clock)
-	pendingMessagesRepo := persistence.NewJSONPendingMessageRepository(filepath.Join(dataDir, "pending_messages.json"))
 
 	// Initialize discovery and gossip services
 	dnsDiscovery := ns.NewDNSDiscovery()
@@ -96,7 +95,7 @@ func NewContainer() (*Container, error) {
 	gossipPort := "8080" // we could also make this more robust
 
 	// Usecases need to be created before gossip service if gossip service depends on them
-	syncDataUC := usecases.NewSyncDataUseCase(userRepo, pendingMessagesRepo)
+	syncDataUC := usecases.NewSyncDataUseCase(userRepo, clock, expirationDuration)
 
 	// Create gossip service
 	gossipService := gossip.NewGossipService(
@@ -115,9 +114,8 @@ func NewContainer() (*Container, error) {
 	getTimeUsecase := usecases.NewGetTimeUseCase(clock)
 	queryUserDataUC := usecases.NewQueryUserDataUseCase(userRepo)
 	getRandomUsersUC := usecases.NewGetRandomUsersUseCase(userRepo)
-	queryPendingMessagesUC := usecases.NewQueryPendingMessagesUseCase(pendingMessagesRepo, userRepo)
-	addPendingMessagesUC := usecases.NewAddPendingMessagesUseCase(pendingMessagesRepo, userRepo, gossipService)
 	registerUserUC := usecases.NewRegisterUserUseCase(userRepo, gossipService, clock)
+	announceUseCase := usecases.NewAnnounceUseCase(userRepo, gossipService, clock, expirationDuration)
 
 	// Initialize handlers
 	getTimeHandler := handlers.NewGetTimeHandler(getTimeUsecase)
@@ -125,21 +123,19 @@ func NewContainer() (*Container, error) {
 	notifyUpdateHandler := handlers.NewNotifyUpdateHandler(gossipService)
 	getRandomUsersHandler := handlers.NewGetRandomUsersHandler(getRandomUsersUC)
 	queryUserHandler := handlers.NewQueryUserDataHandler(queryUserDataUC)
-	queryPendingMessagesHandler := handlers.NewQueryPendingMessagesHandler(queryPendingMessagesUC)
-	addPendingMessagesHandler := handlers.NewAddPendingMessagesHandler(addPendingMessagesUC)
 	registerUserHandler := handlers.NewRegisterUserHandler(registerUserUC)
 	pubKeyHandler := handlers.NewPubKeyHandler(myPrivKey, mySignature)
+	AnnounceHandler := handlers.NewAnnounceHandler(announceUseCase)
 
 	return &Container{
-		GetTimeHandler:              getTimeHandler,
-		QueryUserHandler:            queryUserHandler,
-		GetRandomUsersHandler:       getRandomUsersHandler,
-		QueryPendingMessagesHandler: queryPendingMessagesHandler,
-		AddPendingMessagesHandler:   addPendingMessagesHandler,
-		RegisterUserHandler:         registerUserHandler,
-		SyncDataHandler:             syncDataHandler,
-		NotifyUpdateHandler:         notifyUpdateHandler,
-		PubKeyHandler:               pubKeyHandler,
-		GossipService:               gossipService,
+		GetTimeHandler:        getTimeHandler,
+		QueryUserHandler:      queryUserHandler,
+		GetRandomUsersHandler: getRandomUsersHandler,
+		RegisterUserHandler:   registerUserHandler,
+		SyncDataHandler:       syncDataHandler,
+		NotifyUpdateHandler:   notifyUpdateHandler,
+		PubKeyHandler:         pubKeyHandler,
+		AnnounceHandler:       AnnounceHandler,
+		GossipService:         gossipService,
 	}, nil
 }

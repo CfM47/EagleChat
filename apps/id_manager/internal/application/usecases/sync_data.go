@@ -3,21 +3,22 @@ package usecases
 import (
 	"context"
 	"eaglechat/apps/id_manager/internal/domain/entities"
-	"eaglechat/apps/id_manager/internal/domain/repositories/pendingmessage"
 	"eaglechat/apps/id_manager/internal/domain/repositories/user"
+	"eaglechat/common/clock"
 	"eaglechat/common/ezlog"
+	"time"
 )
 
 // SyncData represents the aggregate data exchanged between ID Managers for synchronization.
 type SyncData struct {
-	Users           []*entities.User           `json:"users"`
-	PendingMessages []*entities.PendingMessage `json:"pending_messages"`
+	Users []*entities.User `json:"users"`
 }
 
 // SyncDataUseCase handles the aggregation and merging of ID Manager data.
 type SyncDataUseCase struct {
 	userRepo           user.UserRepository
-	pendingMessageRepo pendingmessage.PendingMessageRepository
+	clock              clock.Clock
+	expirationDuration time.Duration
 
 	// Logger context
 	logCtx context.Context
@@ -26,11 +27,13 @@ type SyncDataUseCase struct {
 // NewSyncDataUseCase creates a new SyncDataUseCase.
 func NewSyncDataUseCase(
 	userRepo user.UserRepository,
-	pendingMessageRepo pendingmessage.PendingMessageRepository,
+	clock clock.Clock,
+	expirationDuration time.Duration,
 ) *SyncDataUseCase {
 	return &SyncDataUseCase{
 		userRepo:           userRepo,
-		pendingMessageRepo: pendingMessageRepo,
+		clock:              clock,
+		expirationDuration: expirationDuration,
 		logCtx:             ezlog.NewLoggerContext("sync data usecase"),
 	}
 }
@@ -42,14 +45,8 @@ func (uc *SyncDataUseCase) GetAllDataForSync(ctx context.Context) (SyncData, err
 		return SyncData{}, err
 	}
 
-	pendingMessages, err := uc.pendingMessageRepo.FindAll()
-	if err != nil {
-		return SyncData{}, err
-	}
-
 	return SyncData{
-		Users:           users,
-		PendingMessages: pendingMessages,
+		Users: users,
 	}, nil
 }
 
@@ -77,54 +74,20 @@ func (uc *SyncDataUseCase) MergeData(ctx context.Context, incomingData SyncData)
 				ezlog.Log(uc.logCtx).Errorf("SyncDataUseCase: failed to update user %s: %v", incomingUser.ID, err)
 			}
 		}
-		// TODO: If timestamps are equal, we could do a more detailed merge of IPs, but for now,
-		// we'll consider it up-to-date or handle conflicts by keeping existing.
-		// For simplicity, if LastSeen is equal or older, we do nothing.
-		// This implies the local data is authoritative or equally fresh.
+
+		expirationThreshold := uc.clock.Now().Add(-uc.expirationDuration)
+
+		// If timestamps are equal or local is newer, check for ip expiration on the existing user.
+		if existingUser.LastSeen.Before(expirationThreshold) && existingUser.IP != nil {
+			ezlog.Log(uc.logCtx).Debugf("User %s ip has expired", existingUser.Username)
+			// Expire user by setting IP to nil
+			err := uc.userRepo.UpdateIP(existingUser.ID, nil)
+			if err != nil {
+				return err
+			}
+		}
 
 	}
 
-	// Merge PendingMessages
-	for _, incomingPM := range incomingData.PendingMessages {
-		existingPM, err := uc.pendingMessageRepo.FindByID(incomingPM.MessageId, incomingPM.TargetId)
-		if err != nil {
-			if err == pendingmessage.ErrPendingMessageNotFound {
-				// Pending message does not exist locally, save it.
-				if err := uc.pendingMessageRepo.Save(incomingPM); err != nil {
-					ezlog.Log(uc.logCtx).Errorf("SyncDataUseCase: failed to save new pending message %s/%s: %v", incomingPM.MessageId, incomingPM.TargetId, err)
-				}
-			} else {
-				ezlog.Log(uc.logCtx).Errorf("SyncDataUseCase: failed to find pending message %s/%s: %v", incomingPM.MessageId, incomingPM.TargetId, err)
-			}
-			continue
-		}
-
-		// Pending message exists locally, merge cachers_id lists.
-		// Create a map for quick lookup of existing cachers
-		existingCachersMap := make(map[string]struct{})
-		for _, cacherID := range existingPM.CachersId {
-			existingCachersMap[cacherID] = struct{}{}
-		}
-
-		// Add new cachers from incoming data
-		updatedCachers := make([]string, len(existingPM.CachersId))
-		copy(updatedCachers, existingPM.CachersId) // Start with existing cachers
-
-		for _, incomingCacherID := range incomingPM.CachersId {
-			if _, exists := existingCachersMap[incomingCacherID]; !exists {
-				updatedCachers = append(updatedCachers, incomingCacherID)
-				// Add to map so we don't add duplicates if it appears again in incomingPM.CachersId
-				existingCachersMap[incomingCacherID] = struct{}{}
-			}
-		}
-
-		// Only update if the cachers list has actually changed
-		if len(updatedCachers) > len(existingPM.CachersId) {
-			existingPM.CachersId = updatedCachers
-			if err := uc.pendingMessageRepo.Save(existingPM); err != nil { // Save will overwrite, effectively updating
-				ezlog.Log(uc.logCtx).Errorf("SyncDataUseCase: failed to update cachers for pending message %s/%s: %v", incomingPM.MessageId, incomingPM.TargetId, err)
-			}
-		}
-	}
 	return nil
 }
