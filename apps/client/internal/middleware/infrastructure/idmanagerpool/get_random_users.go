@@ -6,17 +6,21 @@ import (
 
 	"eaglechat/apps/client/internal/domain/entities"
 	middleware_entities "eaglechat/apps/client/internal/middleware/domain/entities"
+	"eaglechat/common/ezlog"
 	"eaglechat/common/lib"
 )
 
 func (p *idManagerPoolImpl) GetRandomConnectedUsers(ctx context.Context, count int) ([]middleware_entities.UserData, error) {
-	// FIXME: add logging
+	ezlog.Log(ctx).Infof("Getting %d random connected users from ID Manager Pool", count)
+
 	if count <= 0 {
+		ezlog.Log(ctx).Warnf("Requested non-positive count (%d) of random users", count)
 		return []middleware_entities.UserData{}, nil
 	}
 
 	idManagers := p.repository.GetAll()
 	if len(idManagers) == 0 {
+		ezlog.Log(ctx).Warn("No ID Managers available in pool to get random users from")
 		return []middleware_entities.UserData{}, nil
 	}
 
@@ -67,12 +71,14 @@ func (p *idManagerPoolImpl) GetRandomConnectedUsers(ctx context.Context, count i
 		// This check ensures we don't add more than `count` users,
 		// and that we only trigger cancel once.
 		if len(userMap) < count {
-			userMap[user.User.ID] = user
+			userMap[user.ID] = user
 			if len(userMap) == count {
 				cancel()
 			}
 		}
 	}
+
+	ezlog.Log(ctx).Infof("Retrieved %d unique random connected users from ID Manager Pool", len(userMap))
 
 	return lib.Values(userMap), nil
 }
