@@ -60,12 +60,12 @@ To simplify interaction with the system and avoid direct Docker commands, the pr
 ### `mgr.sh` – Swarm Management CLI
 
 `mgr.sh` is the main entry point for managing the EagleChat environment on Docker Swarm.  
-It acts as a thin CLI wrapper over shared logic implemented in `scripts/common.sh`.
+It acts as a thin CLI wrapper over shared logic implemented in `iac/scripts/common.sh`.
 
 #### Usage
 
 ```bash
-./mgr.sh <command> [arguments]
+./iac/mgr.sh <command> [arguments]
 ````
 
 #### Available Commands
@@ -112,13 +112,13 @@ This script:
 #### Usage
 
 ```bash
-./run-compose.sh
+./iac/run-compose.sh
 ```
 
 Single-manager scenario (default).
 
 ```bash
-./run-compose.sh multi-manager
+./iac/run-compose.sh multi-manager
 ```
 
 Multi-manager scenario using Compose profiles.
@@ -131,13 +131,13 @@ Stops the Docker Compose environment and performs cleanup.
 #### Usage
 
 ```bash
-./stop-compose.sh
+./iac/stop-compose.sh
 ```
 
 or
 
 ```bash
-./stop-compose.sh multi-manager
+./iac/stop-compose.sh multi-manager
 ```
 
 This script also:
