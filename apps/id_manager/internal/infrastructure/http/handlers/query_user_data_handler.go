@@ -19,10 +19,17 @@ func NewQueryUserDataHandler(uc usecases.UseCase[*usecases.QueryUserRequest, use
 // Handle processes the user data query request.
 func (h *QueryUserDataHandler) Handle(c *gin.Context) {
 	var req usecases.QueryUserRequest
+
+	// Parse body
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
 		return
 	}
+
+	// Parse Query params (omit_disconnected)
+	omitStr := c.Query("omit_disconnected")
+	omitDisconnected := omitStr == "true"
+	req.OmitDisconnected = omitDisconnected
 
 	resp, err := h.useCase.Execute(c.Request.Context(), &req)
 	if err != nil {

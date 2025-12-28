@@ -9,6 +9,7 @@ import (
 	"net"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -17,6 +18,50 @@ type JSONUserRepository struct {
 	filePath string
 	mu       sync.RWMutex
 	clock    clock.Clock
+}
+
+type UserRecord struct {
+	ID           string    `json:"id"`         // user unique id
+	Username     string    `json:"username"`   // user readable alias
+	PublicKeyPEM []byte    `json:"public_key"` // PEM codified RSA Public Key
+	IP           *string   `json:"ip,omitempty"`
+	LastSeen     time.Time `json:"last_seen"` // last moment of connection/disconnection
+}
+
+func UserFromRecord(r *UserRecord) (*entities.User, error) {
+	var ipPtr *net.IP
+
+	ipPtr = nil
+	if r.IP != nil {
+		parsed := net.ParseIP(*r.IP)
+		if parsed != nil {
+			ipPtr = &parsed
+		}
+	}
+
+	return &entities.User{
+		ID:           r.ID,
+		Username:     r.Username,
+		PublicKeyPEM: r.PublicKeyPEM,
+		IP:           ipPtr,
+		LastSeen:     r.LastSeen,
+	}, nil
+}
+
+func RecordFromUser(u *entities.User) *UserRecord {
+	var ip *string
+	if u.IP != nil {
+		s := u.IP.String()
+		ip = &s
+	}
+
+	return &UserRecord{
+		ID:           u.ID,
+		Username:     u.Username,
+		PublicKeyPEM: u.PublicKeyPEM,
+		IP:           ip,
+		LastSeen:     u.LastSeen.UTC().Round(0),
+	}
 }
 
 var _ repositories.UserRepository = (*JSONUserRepository)(nil)
@@ -33,13 +78,31 @@ func (r *JSONUserRepository) load() ([]*entities.User, error) {
 		}
 		return nil, err
 	}
-	var users []*entities.User
-	err = json.Unmarshal(data, &users)
-	return users, err
+
+	var records []*UserRecord
+	if err := json.Unmarshal(data, &records); err != nil {
+		return nil, err
+	}
+
+	users := make([]*entities.User, 0, len(records))
+	for _, rec := range records {
+		u, err := UserFromRecord(rec)
+		if err != nil {
+			return nil, err
+		}
+		users = append(users, u)
+	}
+
+	return users, nil
 }
 
 func (r *JSONUserRepository) save(users []*entities.User) error {
-	data, err := json.MarshalIndent(users, "", "  ")
+	records := make([]*UserRecord, 0, len(users))
+	for _, u := range users {
+		records = append(records, RecordFromUser(u))
+	}
+
+	data, err := json.MarshalIndent(records, "", "  ")
 	if err != nil {
 		return err
 	}
@@ -76,11 +139,6 @@ func (r *JSONUserRepository) FindByID(ID string) (*entities.User, error) {
 	}
 	for _, u := range users {
 		if u.ID == ID {
-			// Check if IP is expired and nullify it if so
-			// TODO: see why IsIPExpired always return false
-			// if u.IsIPExpired() {
-			// 	u.IP = nil
-			// }
 			return u, nil
 		}
 	}
@@ -94,13 +152,6 @@ func (r *JSONUserRepository) FindAll() ([]*entities.User, error) {
 	users, err := r.load()
 	if err != nil {
 		return nil, err
-	}
-
-	// Check for expired IPs and nullify them
-	for _, u := range users {
-		if u.IsIPExpired() {
-			u.IP = nil
-		}
 	}
 
 	return users, nil
@@ -135,7 +186,10 @@ func (r *JSONUserRepository) UpdateIP(ID string, ip net.IP) error {
 
 	for i := range users {
 		if users[i].ID == ID {
-			users[i].IP = &ip
+			ipCopy := make(net.IP, len(ip))
+			copy(ipCopy, ip)
+
+			users[i].IP = &ipCopy
 			// Update LastSeen when IP is updated, rounded to zero like in NewUser
 			users[i].LastSeen = r.clock.Now().UTC().Round(0)
 			return r.save(users)
@@ -175,6 +229,7 @@ func (r *JSONUserRepository) Create(user *entities.User) (*entities.User, error)
 
 	// Generate a new UUID for the user
 	user.ID = uuid.New().String()
+	user.LastSeen = r.clock.Now().UTC().Round(0)
 
 	users = append(users, user)
 

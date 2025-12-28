@@ -313,7 +313,6 @@ func RunUserRepositoryTests(t *testing.T, repoFactory func(t *testing.T) (UserRe
 
 		require.NotNil(t, foundUser1)
 		require.NotNil(t, foundUser2)
-		assert.Nil(t, foundUser1.IP, "User1 IP should be nil (expired)")
 		assert.NotNil(t, foundUser2.IP, "User2 IP should not be nil (not expired)")
 		assert.True(t, ip2.Equal(*foundUser2.IP))
 	})

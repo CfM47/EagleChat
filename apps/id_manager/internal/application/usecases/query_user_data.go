@@ -19,7 +19,7 @@ func NewQueryUserDataUseCase(repo user.UserRepository) *QueryUserDataUseCase {
 
 type QueryUserRequest struct {
 	Ids              []string `json:"Ids"`
-	OmitDisconnected bool     `json:"OmitDisconnected"`
+	OmitDisconnected bool     `json:"omit_disconnected"`
 }
 
 type UserData struct {
